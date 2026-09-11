@@ -1,978 +1,1176 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>VORTEX // OSINT Terminal Dashboard</title>
-
-<!-- Fonts: Inter & JetBrains Mono -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-
-<!-- Leaflet CSS & JS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>VORTEX</title>
 <style>
-  :root {
-    --bg: #090a0f;
-    --panel-bg: rgba(15, 18, 25, 0.75);
-    --panel-border: rgba(255, 255, 255, 0.08);
-    --panel-border-bright: rgba(0, 240, 255, 0.3);
-    
-    --accent: #00f0ff;
-    --accent-dim: rgba(0, 240, 255, 0.15);
-    --accent-glow: rgba(0, 240, 255, 0.4);
-    
-    --ink-main: #f0f4f8;
-    --ink-dim: #7a889b;
-    --ink-muted: #414d5c;
-    
-    --success: #00ff88;
-    --warning: #ffb700;
-    --danger: #ff0055;
-    
-    --glass-blur: blur(12px);
-    --radius-sm: 4px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
-  }
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    user-select: none;
-  }
+:root{
+  --bg:#07070a;
+  --bg-2:#0c0c12;
+  --panel:#101017;
+  --panel-2:#14141d;
+  --line:#22222e;
+  --ink:#eeecf6;
+  --ink-dim:#8b899e;
+  --violet:#8b6bff;
+  --violet-dim:#5c4ab8;
+  --cyan:#2fe8d0;
+  --amber:#e8a94f;
+  --danger:#ff5d6c;
+  --radius:16px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--ink);
+  font-family:'Space Grotesk',sans-serif;overflow:hidden;overscroll-behavior:none;
+  -webkit-font-smoothing:antialiased;}
+.mono{font-family:'JetBrains Mono',monospace;}
+button{font-family:inherit;}
+::selection{background:var(--violet-dim);}
 
-  body {
-    background-color: var(--bg);
-    color: var(--ink-main);
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    font-size: 13px;
-    line-height: 1.5;
-    height: 100vh;
-    width: 100vw;
-    overflow: hidden;
-    position: relative;
-    background-image: 
-      radial-gradient(circle at 50% 50%, rgba(0, 240, 255, 0.03) 0%, transparent 70%),
-      linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-    background-size: 100% 100%, 32px 32px, 32px 32px;
-  }
+#stage{position:relative;width:100vw;height:100vh;height:100dvh;}
 
-  .mono {
-    font-family: 'JetBrains Mono', monospace;
-  }
+/* ---------------- background field ---------------- */
+#field{position:absolute;inset:0;z-index:0;}
+#vignette{position:absolute;inset:0;pointer-events:none;z-index:1;
+  background:radial-gradient(ellipse at 50% 42%, transparent 30%, rgba(0,0,0,.5) 78%, rgba(0,0,0,.85) 100%);}
+#grain{position:absolute;inset:0;pointer-events:none;z-index:1;opacity:.035;mix-blend-mode:overlay;
+  background:repeating-linear-gradient(0deg,#fff 0px,#fff 1px,transparent 1px,transparent 3px);}
 
-  /* --- APP CONTAINER --- */
-  #app {
-    display: grid;
-    grid-template-rows: 48px 1fr 32px;
-    height: 100vh;
-    width: 100vw;
-  }
+/* ---------------- top bar ---------------- */
+#topbar{position:absolute;top:0;left:0;right:0;z-index:30;display:flex;align-items:center;
+  gap:12px;padding:16px 16px 0;}
+#brandmark{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+#brandmark .dot{width:8px;height:8px;border-radius:50%;background:var(--cyan);
+  box-shadow:0 0 10px var(--cyan);}
+#brandmark span{font-size:13px;font-weight:600;letter-spacing:.14em;color:var(--ink-dim);}
 
-  /* --- TOPBAR --- */
-  header {
-    background: var(--panel-bg);
-    backdrop-filter: var(--glass-blur);
-    border-bottom: 1px solid var(--panel-border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 16px;
-    z-index: 100;
-  }
+#textform{flex:1;display:flex;}
+#textbar{flex:1;display:flex;align-items:center;gap:8px;background:rgba(16,16,23,.78);
+  border:1px solid var(--line);border-radius:12px;padding:9px 12px;backdrop-filter:blur(10px);
+  transition:border-color .2s;}
+#textbar:focus-within{border-color:var(--violet);}
+#textin{flex:1;background:none;border:none;outline:none;color:var(--ink);font-size:13px;
+  font-family:'Space Grotesk',sans-serif;min-width:0;}
+#textin::placeholder{color:#54536a;}
+#textsend{background:none;border:none;color:var(--ink-dim);cursor:pointer;padding:2px;
+  display:flex;align-items:center;}
+#textsend:hover{color:var(--cyan);}
 
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    color: var(--ink-main);
-  }
+#gearbtn{flex-shrink:0;width:38px;height:38px;border-radius:10px;border:1px solid var(--line);
+  background:rgba(16,16,23,.78);color:var(--ink-dim);display:flex;align-items:center;
+  justify-content:center;cursor:pointer;backdrop-filter:blur(10px);transition:.2s;}
+#gearbtn:hover{color:var(--ink);border-color:var(--violet);}
 
-  .brand-logo {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    border: 2px solid var(--accent);
-    box-shadow: 0 0 8px var(--accent-glow);
-    position: relative;
-  }
+/* ---------------- hero / vortex ---------------- */
+#hero{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;z-index:5;pointer-events:none;}
+canvas#swirl{width:min(78vmin,480px);height:min(78vmin,480px);}
+#wordmark{margin-top:-6vmin;font-size:clamp(28px,7vw,44px);font-weight:700;letter-spacing:.02em;
+  background:linear-gradient(120deg,var(--ink) 30%,var(--cyan) 55%,var(--violet) 80%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;}
+#substate{margin-top:6px;font-size:11px;letter-spacing:.16em;color:var(--ink-dim);
+  font-family:'JetBrains Mono',monospace;min-height:16px;text-align:center;}
 
-  .brand-logo::after {
-    content: '';
-    position: absolute;
-    top: 3px; left: 3px; right: 3px; bottom: 3px;
-    background: var(--accent);
-    border-radius: 50%;
-  }
+/* ---------------- transcript ---------------- */
+#transcript{position:absolute;left:0;right:0;bottom:118px;z-index:20;
+  max-height:46vh;overflow-y:auto;padding:0 18px;display:flex;flex-direction:column;
+  gap:10px;scrollbar-width:none;}
+#transcript::-webkit-scrollbar{display:none;}
+.bubble{max-width:min(520px,88vw);margin:0 auto;width:100%;opacity:0;transform:translateY(10px);
+  animation:bubbleIn .45s cubic-bezier(.2,.8,.25,1) forwards;}
+@keyframes bubbleIn{to{opacity:1;transform:translateY(0);}}
+.bubble.user{display:flex;justify-content:flex-end;}
+.bubble.user .txt{background:var(--panel-2);border:1px solid var(--line);border-radius:14px 14px 4px 14px;
+  padding:9px 14px;font-size:13px;color:var(--ink);max-width:80%;}
+.bubble.vortex .txt{background:rgba(139,107,255,.08);border:1px solid rgba(139,107,255,.25);
+  border-radius:14px 14px 14px 4px;padding:10px 14px;font-size:13.5px;line-height:1.5;color:var(--ink);
+  max-width:92%;}
+.bubble.vortex .tag{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;
+  color:var(--cyan);margin-bottom:5px;display:block;}
 
-  .nav-tabs {
-    display: flex;
-    gap: 4px;
-    height: 100%;
-  }
+/* ---------------- mic ---------------- */
+#micwrap{position:absolute;left:50%;bottom:30px;transform:translateX(-50%);z-index:25;
+  display:flex;flex-direction:column;align-items:center;gap:8px;}
+#michint{font-size:10px;letter-spacing:.1em;color:var(--ink-dim);font-family:'JetBrains Mono',monospace;}
+#micbtn{width:66px;height:66px;border-radius:50%;border:1px solid var(--line);cursor:pointer;
+  background:radial-gradient(circle at 40% 35%,#1c1c28,#0d0d13);display:flex;align-items:center;
+  justify-content:center;position:relative;transition:border-color .25s,transform .15s;}
+#micbtn:active{transform:scale(.95);}
+#micbtn svg{width:24px;height:24px;stroke:var(--ink);fill:none;stroke-width:1.6;}
+#micbtn.listening{border-color:var(--cyan);}
+#micbtn.listening svg{stroke:var(--cyan);}
+#micbtn.speaking{border-color:var(--violet);}
+#micring{position:absolute;inset:-10px;border-radius:50%;border:1px solid var(--cyan);opacity:0;}
+#micbtn.listening #micring{animation:ringPulse 1.4s ease-out infinite;}
+@keyframes ringPulse{0%{opacity:.6;transform:scale(.9);}100%{opacity:0;transform:scale(1.5);}}
 
-  .tab-btn {
-    background: transparent;
-    border: none;
-    color: var(--ink-dim);
-    padding: 0 16px;
-    height: 100%;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 1px;
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: all 0.2s ease;
-  }
+/* ---------------- settings panel ---------------- */
+#scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;opacity:0;pointer-events:none;
+  transition:opacity .3s;}
+#scrim.visible{opacity:1;pointer-events:auto;}
+#settings{position:fixed;top:0;right:0;bottom:0;width:min(360px,88vw);background:var(--panel);
+  border-left:1px solid var(--line);z-index:61;transform:translateX(100%);
+  transition:transform .38s cubic-bezier(.2,.8,.25,1);padding:22px 20px;overflow-y:auto;}
+#settings.visible{transform:translateX(0);}
+#settings h2{font-size:15px;letter-spacing:.06em;margin:0 0 4px;}
+#settings .sub{font-size:11.5px;color:var(--ink-dim);margin:0 0 22px;line-height:1.5;}
+#settings label{display:block;font-size:10px;letter-spacing:.1em;color:var(--ink-dim);
+  font-family:'JetBrains Mono',monospace;margin-bottom:7px;}
+#keyrow{display:flex;gap:8px;margin-bottom:8px;}
+#keyinput{flex:1;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;
+  padding:10px 11px;color:var(--ink);font-size:12.5px;font-family:'JetBrains Mono',monospace;
+  outline:none;min-width:0;}
+#keyinput:focus{border-color:var(--violet);}
+#togglevis{background:none;border:1px solid var(--line);border-radius:8px;color:var(--ink-dim);
+  width:38px;cursor:pointer;flex-shrink:0;}
+#getkeylink{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--cyan);
+  text-decoration:none;margin-bottom:18px;}
+#getkeylink:hover{text-decoration:underline;}
+#keyactions{display:flex;gap:8px;margin-bottom:24px;}
+.btn{flex:1;border-radius:9px;padding:10px 12px;font-size:12px;letter-spacing:.03em;
+  cursor:pointer;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);
+  transition:.2s;text-align:center;}
+.btn.primary{background:linear-gradient(120deg,var(--violet),var(--cyan));color:#08080c;
+  border:none;font-weight:600;}
+.btn:hover{filter:brightness(1.12);}
+#keystatus{font-size:11px;font-family:'JetBrains Mono',monospace;margin-bottom:22px;min-height:14px;}
+#keystatus.ok{color:var(--cyan);}
+#keystatus.err{color:var(--danger);}
+.divider{height:1px;background:var(--line);margin:20px 0;}
+.toollist{display:flex;flex-direction:column;gap:9px;}
+.toolrow{display:flex;justify-content:space-between;align-items:center;font-size:12px;
+  padding:9px 11px;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;}
+.toolrow .name{color:var(--ink);}
+.toolrow .src{color:var(--ink-dim);font-family:'JetBrains Mono',monospace;font-size:9.5px;}
 
-  .tab-btn:hover {
-    color: var(--ink-main);
-    background: rgba(255, 255, 255, 0.02);
-  }
+/* ---------------- globe view ---------------- */
+#globeview{position:fixed;inset:0;z-index:70;background:var(--bg);display:none;}
+#globeview.active{display:block;}
+canvas#globe{position:absolute;inset:0;display:block;}
+#gv-header{position:absolute;top:0;left:0;right:0;z-index:5;display:flex;
+  justify-content:space-between;align-items:flex-start;padding:18px 20px;pointer-events:none;}
+#gv-title{font-size:13px;font-weight:600;letter-spacing:.12em;}
+#gv-title small{display:block;font-size:8px;letter-spacing:.16em;color:var(--ink-dim);
+  font-family:'JetBrains Mono',monospace;margin-top:2px;font-weight:400;}
+#gv-close{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);
+  background:rgba(16,16,23,.7);color:var(--ink-dim);font-size:16px;display:flex;
+  align-items:center;justify-content:center;cursor:pointer;pointer-events:auto;}
+#gv-close:hover{color:var(--ink);border-color:var(--danger);}
+#gv-status{position:absolute;top:70px;left:50%;transform:translateX(-50%);z-index:5;
+  font-size:10px;letter-spacing:.12em;color:var(--amber);font-family:'JetBrains Mono',monospace;}
+#gv-card{position:fixed;left:0;right:0;bottom:0;z-index:8;max-width:520px;margin:0 auto;
+  background:rgba(10,10,15,.94);border-top:1px solid var(--line);border-radius:16px 16px 0 0;
+  padding:16px 20px calc(16px + env(safe-area-inset-bottom,0px));transform:translateY(100%);
+  transition:transform .5s cubic-bezier(.2,.8,.25,1);}
+#gv-card.visible{transform:translateY(0);}
+#gv-card dl{display:grid;grid-template-columns:1fr 1fr;gap:7px 18px;margin:12px 0 0;
+  padding-top:10px;border-top:1px solid var(--line);}
+#gv-card .field{display:flex;justify-content:space-between;gap:8px;}
+#gv-card dt{font-size:9px;color:var(--ink-dim);letter-spacing:.08em;font-family:'JetBrains Mono',monospace;}
+#gv-card dd{font-size:11px;margin:0;text-align:right;}
+#gv-headrow{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+#gv-headrow .loc{font-size:16px;font-weight:600;}
+#gv-headrow .ip{margin-left:auto;font-size:12px;color:var(--amber);font-family:'JetBrains Mono',monospace;}
 
-  .tab-btn.active {
-    color: var(--accent);
-    border-bottom-color: var(--accent);
-    background: var(--accent-dim);
-  }
+/* ---------------- generic result view ---------------- */
+#resultview{position:fixed;inset:0;z-index:70;background:var(--bg);display:none;overflow-y:auto;}
+#resultview.active{display:block;}
+#rv-bg{position:fixed;inset:0;z-index:0;opacity:.5;}
+#rv-inner{position:relative;z-index:2;max-width:560px;margin:0 auto;padding:70px 20px 60px;}
+#rv-header{position:fixed;top:0;left:0;right:0;z-index:5;display:flex;justify-content:space-between;
+  align-items:flex-start;padding:18px 20px;}
+#rv-title{font-size:13px;font-weight:600;letter-spacing:.12em;}
+#rv-title small{display:block;font-size:8px;letter-spacing:.16em;color:var(--ink-dim);
+  font-family:'JetBrains Mono',monospace;margin-top:2px;font-weight:400;}
+#rv-close{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);
+  background:rgba(16,16,23,.7);color:var(--ink-dim);font-size:16px;display:flex;
+  align-items:center;justify-content:center;cursor:pointer;}
+#rv-close:hover{color:var(--ink);border-color:var(--danger);}
+#rv-target{font-size:22px;font-weight:700;margin:8px 0 2px;word-break:break-word;}
+#rv-sub{font-size:11px;color:var(--ink-dim);font-family:'JetBrains Mono',monospace;margin-bottom:26px;}
+.scanline{height:1px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+  margin:22px 0;opacity:0;animation:scanIn .6s ease forwards;}
+.rv-block{opacity:0;transform:translateY(14px);animation:blockIn .5s cubic-bezier(.2,.8,.25,1) forwards;
+  margin-bottom:16px;}
+@keyframes blockIn{to{opacity:1;transform:translateY(0);}}
+@keyframes scanIn{to{opacity:.5;}}
+.rv-block .label{font-size:9.5px;letter-spacing:.14em;color:var(--cyan);font-family:'JetBrains Mono',monospace;
+  margin-bottom:8px;}
+.rv-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.rv-cell{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 13px;}
+.rv-cell .k{font-size:9px;color:var(--ink-dim);letter-spacing:.08em;font-family:'JetBrains Mono',monospace;
+  margin-bottom:4px;}
+.rv-cell .v{font-size:13px;word-break:break-word;}
+.rv-cell .v.hit{color:var(--danger);}
+.rv-cell .v.clear{color:var(--cyan);}
+.rv-list{display:flex;flex-direction:column;gap:6px;}
+.rv-listitem{display:flex;justify-content:space-between;align-items:center;background:var(--panel);
+  border:1px solid var(--line);border-radius:9px;padding:10px 13px;font-size:12.5px;}
+.rv-listitem a{color:var(--ink);text-decoration:none;}
+.rv-listitem .status{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.08em;
+  padding:3px 8px;border-radius:5px;}
+.status.found{background:rgba(255,93,108,.15);color:var(--danger);}
+.status.clear{background:rgba(47,232,208,.12);color:var(--cyan);}
+.status.unknown{background:rgba(139,137,158,.12);color:var(--ink-dim);}
+.rv-note{font-size:11px;color:var(--ink-dim);line-height:1.6;}
+#rv-loading{display:flex;flex-direction:column;align-items:center;gap:14px;padding:80px 0;}
+#rv-spinner{width:52px;height:52px;border-radius:50%;border:2px solid var(--line);
+  border-top-color:var(--cyan);animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#rv-loadtext{font-size:11px;letter-spacing:.12em;color:var(--ink-dim);font-family:'JetBrains Mono',monospace;}
 
-  .sys-indicators {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    font-size: 11px;
-  }
-
-  .indicator {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--ink-dim);
-  }
-
-  .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--ink-muted);
-  }
-
-  .dot.active {
-    background: var(--success);
-    box-shadow: 0 0 6px var(--success);
-  }
-
-  /* --- MAIN CONTENT AREA --- */
-  main {
-    display: grid;
-    grid-template-columns: 360px 1fr;
-    gap: 1px;
-    background: var(--panel-border);
-    position: relative;
-    overflow: hidden;
-  }
-
-  /* --- LEFT PANEL: ASSISTANT & COMMANDS --- */
-  .left-panel {
-    background: var(--panel-bg);
-    backdrop-filter: var(--glass-blur);
-    display: flex;
-    flex-direction: column;
-    z-index: 10;
-  }
-
-  .chat-container {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .bubble {
-    max-width: 90%;
-    padding: 10px 14px;
-    border-radius: var(--radius-md);
-    line-height: 1.4;
-    word-break: break-word;
-    user-select: text;
-  }
-
-  .bubble.system {
-    align-self: flex-start;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--panel-border);
-    color: var(--ink-main);
-  }
-
-  .bubble.user {
-    align-self: flex-end;
-    background: var(--accent-dim);
-    border: 1px solid var(--panel-border-bright);
-    color: var(--accent);
-  }
-
-  .bubble .meta {
-    font-size: 9px;
-    color: var(--ink-dim);
-    margin-bottom: 4px;
-    letter-spacing: 0.5px;
-  }
-
-  .input-bar {
-    padding: 12px;
-    border-top: 1px solid var(--panel-border);
-    background: rgba(0, 0, 0, 0.2);
-    display: flex;
-    gap: 8px;
-  }
-
-  .input-bar input {
-    flex: 1;
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid var(--panel-border);
-    border-radius: var(--radius-sm);
-    padding: 8px 12px;
-    color: var(--ink-main);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  .input-bar input:focus {
-    border-color: var(--accent);
-  }
-
-  .btn {
-    background: var(--accent-dim);
-    border: 1px solid var(--panel-border-bright);
-    color: var(--accent);
-    padding: 8px 14px;
-    border-radius: var(--radius-sm);
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .btn:hover {
-    background: var(--accent);
-    color: var(--bg);
-    box-shadow: 0 0 10px var(--accent-glow);
-  }
-
-  /* --- RIGHT PANEL: DISPLAY DASHBOARD --- */
-  .right-panel {
-    background: rgba(5, 7, 10, 0.85);
-    display: flex;
-    flex-direction: column;
-    position: relative;
-  }
-
-  .viewport-header {
-    height: 36px;
-    background: rgba(0, 0, 0, 0.4);
-    border-bottom: 1px solid var(--panel-border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 16px;
-    font-size: 11px;
-    color: var(--ink-dim);
-  }
-
-  .viewport-content {
-    flex: 1;
-    position: relative;
-    overflow: hidden;
-  }
-
-  /* TABS CONTENT */
-  .tab-content {
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    display: none;
-    flex-direction: column;
-  }
-
-  .tab-content.active {
-    display: flex;
-  }
-
-  /* VIEW: TERMINAL / BLOCKS */
-  #view-terminal {
-    padding: 20px;
-    overflow-y: auto;
-    gap: 16px;
-  }
-
-  .rv-block {
-    background: var(--panel-bg);
-    border: 1px solid var(--panel-border);
-    border-radius: var(--radius-md);
-    padding: 16px;
-    position: relative;
-  }
-
-  .rv-block .label {
-    font-size: 10px;
-    color: var(--accent);
-    letter-spacing: 1px;
-    margin-bottom: 10px;
-    text-transform: uppercase;
-  }
-
-  .rv-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 12px;
-  }
-
-  .rv-cell {
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.03);
-    padding: 10px;
-    border-radius: var(--radius-sm);
-  }
-
-  .rv-cell .k {
-    font-size: 9px;
-    color: var(--ink-dim);
-    margin-bottom: 4px;
-  }
-
-  .rv-cell .v {
-    font-size: 12px;
-    color: var(--ink-main);
-    font-weight: 500;
-    user-select: text;
-  }
-
-  .rv-cell .v.hit {
-    color: var(--danger);
-  }
-
-  .rv-cell .v.clear {
-    color: var(--success);
-  }
-
-  .rv-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .rv-listitem {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(0, 0, 0, 0.2);
-    padding: 8px 12px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--panel-border);
-  }
-
-  .rv-listitem a {
-    color: var(--accent);
-    text-decoration: none;
-  }
-
-  .rv-listitem a:hover {
-    text-decoration: underline;
-  }
-
-  .status {
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 9px;
-    font-weight: 700;
-  }
-
-  .status.found {
-    background: rgba(255, 0, 85, 0.2);
-    color: var(--danger);
-    border: 1px solid var(--danger);
-  }
-
-  .status.clear {
-    background: rgba(0, 255, 136, 0.2);
-    color: var(--success);
-    border: 1px solid var(--success);
-  }
-
-  .status.unknown {
-    background: rgba(255, 183, 0, 0.2);
-    color: var(--warning);
-    border: 1px solid var(--warning);
-  }
-
-  /* VIEW: MAP */
-  #map {
-    width: 100%;
-    height: 100%;
-    background: #000;
-  }
-
-  /* Custom Leaflet Map Dark Styling */
-  .leaflet-tile {
-    filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3);
-  }
-
-  .leaflet-container {
-    background: #090a0f !important;
-  }
-
-  /* --- FOOTER / STATUS BAR --- */
-  footer {
-    background: var(--panel-bg);
-    border-top: 1px solid var(--panel-border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 16px;
-    font-size: 10px;
-    color: var(--ink-dim);
-    z-index: 100;
-  }
-
-  .status-text {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .scanline {
-    width: 100%;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-    position: absolute;
-    top: 0;
-    left: -100%;
-    animation: scan 4s linear infinite;
-    opacity: 0.5;
-    pointer-events: none;
-  }
-
-  @keyframes scan {
-    0% { left: -100%; }
-    100% { left: 100%; }
-  }
+@media (max-width:520px){
+  #topbar{flex-wrap:wrap;}
+  #transcript{bottom:112px;}
+}
 </style>
 </head>
 <body>
 
-<div id="app">
-  <!-- TOPBAR -->
-  <header>
-    <div class="brand">
-      <div class="brand-logo"></div>
-      <span class="mono">VORTEX <span style="font-size:9px; color:var(--accent); font-weight:normal;">// OSINT v2.4</span></span>
-    </div>
+<div id="stage">
+  <canvas id="field"></canvas>
+  <div id="vignette"></div>
+  <div id="grain"></div>
 
-    <div class="nav-tabs">
-      <button class="tab-btn mono active" onclick="switchTab('terminal')">TERMINAL</button>
-      <button class="tab-btn mono" onclick="switchTab('map')">MAP VIEW</button>
-    </div>
-
-    <div class="sys-indicators mono">
-      <div class="indicator"><div class="dot active"></div> VOICE LINK</div>
-      <div class="indicator"><div class="dot active"></div> PROXY MESH</div>
-    </div>
-  </header>
-
-  <!-- MAIN VIEWPORT -->
-  <main>
-    <!-- LEFT PANEL: ASSISTANT & CHAT -->
-    <div class="left-panel">
-      <div class="chat-container" id="chat-container">
-        <div class="bubble system">
-          <div class="meta mono">SYSTEM // INITIALIZED</div>
-          VORTEX OSINT Terminal ready. Enter a target IP, Domain, or Social Handle below, or click Voice to speak.
-        </div>
+  <div id="topbar">
+    <div id="brandmark"><span class="dot"></span><span>VORTEX</span></div>
+    <form id="textform">
+      <div id="textbar">
+        <input id="textin" type="text" placeholder="Type a command or question…" autocomplete="off">
+        <button type="submit" id="textsend" aria-label="send">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
       </div>
+    </form>
+    <button id="gearbtn" aria-label="settings">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+      </svg>
+    </button>
+  </div>
 
-      <div class="input-bar">
-        <input type="text" id="cmd-input" class="mono" placeholder="Target or Command..." onkeydown="if(event.key==='Enter') executeCommand()" />
-        <button class="btn mono" onclick="executeCommand()">RUN</button>
-        <button class="btn mono" id="mic-btn" onclick="toggleVoice()">VOICE</button>
-      </div>
-    </div>
+  <div id="hero">
+    <canvas id="swirl"></canvas>
+    <div id="wordmark">VORTEX</div>
+    <div id="substate" class="mono">STANDBY — SAY OR TYPE A COMMAND</div>
+  </div>
 
-    <!-- RIGHT PANEL: RENDER BLOCKS / MAP -->
-    <div class="right-panel">
-      <div class="scanline"></div>
-      <div class="viewport-header mono">
-        <span id="vp-title">TARGET DATA // DISPLAY</span>
-        <span id="vp-status">IDLE</span>
-      </div>
+  <div id="transcript"></div>
 
-      <div class="viewport-content">
-        <!-- TERMINAL / DATA BLOCKS VIEW -->
-        <div id="view-terminal" class="tab-content active">
-          <div style="color:var(--ink-muted); text-align:center; margin-top:100px;" class="mono">
-            AWAITING TARGET INPUT...
-          </div>
-        </div>
-
-        <!-- MAP VIEW -->
-        <div id="view-map" class="tab-content">
-          <div id="map"></div>
-        </div>
-      </div>
-    </div>
-  </main>
-
-  <!-- FOOTER STATUS BAR -->
-  <footer>
-    <div class="status-text mono">
-      <span style="color:var(--accent);">STATUS:</span> <span id="sys-status">STANDBY — SAY OR TYPE A COMMAND</span>
-    </div>
-    <div class="mono" style="color:var(--ink-muted);">SECURE MESH // ENCRYPTED</div>
-  </footer>
+  <div id="micwrap">
+    <div id="michint" class="mono">HOLD TO SPEAK</div>
+    <button id="micbtn" aria-label="microphone">
+      <div id="micring"></div>
+      <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 00-3 3v6a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v1a7 7 0 01-14 0v-1M12 18v4M8 22h8"/></svg>
+    </button>
+  </div>
 </div>
 
+<!-- ============ SETTINGS PANEL ============ -->
+<div id="scrim"></div>
+<div id="settings">
+  <h2>Configuration</h2>
+  <p class="sub">Vortex needs a Gemini API key to understand and respond to you. Your key stays in this browser — it is never sent anywhere except Google's API.</p>
+
+  <label for="keyinput">GEMINI API KEY</label>
+  <div id="keyrow">
+    <input id="keyinput" type="password" placeholder="AIza…" autocomplete="off">
+    <button id="togglevis" type="button" aria-label="show key">👁</button>
+  </div>
+  <a id="getkeylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">
+    Get a free key at aistudio.google.com/apikey ↗
+  </a>
+  <div id="keyactions">
+    <button class="btn primary" id="savekey">Save key</button>
+    <button class="btn" id="clearkey">Remove</button>
+  </div>
+  <div id="keystatus" class="mono"></div>
+
+  <div class="divider"></div>
+
+  <label>ACTIVE LOOKUP SOURCES</label>
+  <div class="toollist">
+    <div class="toolrow"><span class="name">IP geolocation</span><span class="src mono">ipwho.is</span></div>
+    <div class="toolrow"><span class="name">Domain / WHOIS</span><span class="src mono">rdap.org</span></div>
+    <div class="toolrow"><span class="name">Email breach check</span><span class="src mono">xposedornot</span></div>
+    <div class="toolrow"><span class="name">Username sweep</span><span class="src mono">github + links</span></div>
+    <div class="toolrow"><span class="name">Conversation</span><span class="src mono">gemini</span></div>
+  </div>
+</div>
+
+<!-- ============ GLOBE VIEW (IP trace) ============ -->
+<div id="globeview">
+  <canvas id="globe"></canvas>
+  <div id="vignette2" style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 55%, transparent 35%, rgba(0,0,0,.55) 78%, rgba(0,0,0,.85) 100%);"></div>
+  <div id="gv-header">
+    <div id="gv-title">IP TRACE<small>PASSIVE GEOLOCATION</small></div>
+    <button id="gv-close">&times;</button>
+  </div>
+  <div id="gv-status" class="mono"></div>
+  <div id="gv-card"></div>
+</div>
+
+<!-- ============ GENERIC RESULT VIEW (whois / breach / username) ============ -->
+<div id="resultview">
+  <canvas id="rv-bg"></canvas>
+  <div id="rv-header">
+    <div id="rv-title">— <small>—</small></div>
+    <button id="rv-close">&times;</button>
+  </div>
+  <div id="rv-inner"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script>
-/* ==========================================================================
-   GLOBAL STATE & INITIALIZATION
-   ========================================================================== */
-let map = null;
-let currentMarker = null;
-let isListening = false;
-let recognition = null;
+"use strict";
 
-// Audio synth setup
-const synth = window.speechSynthesis;
+/* =====================================================================
+   VORTEX — CORE STATE
+===================================================================== */
+const V = {
+  key: localStorage.getItem('vortex_gemini_key') || '',
+  listening:false, speaking:false,
+};
 
-window.addEventListener('DOMContentLoaded', () => {
-  initMap();
-  initWebSpeech();
+function setStatus(text){ document.getElementById('substate').textContent = text; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* =====================================================================
+   BACKGROUND FIELD — faint drifting particle plane behind everything
+===================================================================== */
+(function backgroundField(){
+  const c = document.getElementById('field');
+  const ctx = c.getContext('2d');
+  let w,h,pts=[];
+  function resize(){
+    w = c.width = innerWidth; h = c.height = innerHeight;
+    const n = Math.round((w*h)/26000);
+    pts = Array.from({length:n},()=>({
+      x:Math.random()*w, y:Math.random()*h,
+      vx:(Math.random()-.5)*.12, vy:(Math.random()-.5)*.12,
+      r:Math.random()*1.2+.3
+    }));
+  }
+  function tick(){
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = 'rgba(139,107,255,0.35)';
+    pts.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0)p.x=w; if(p.x>w)p.x=0; if(p.y<0)p.y=h; if(p.y>h)p.y=0;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+    });
+    requestAnimationFrame(tick);
+  }
+  addEventListener('resize',resize); resize(); tick();
+})();
+
+/* =====================================================================
+   VORTEX SWIRL HERO — canvas spiral, reacts to listening/speaking/busy
+===================================================================== */
+const SwirlFX = (function(){
+  const c = document.getElementById('swirl');
+  const ctx = c.getContext('2d');
+  let size=0, particles=[], mode='idle', t=0;
+
+  function resize(){
+    const rect = c.getBoundingClientRect();
+    const dpr = Math.min(devicePixelRatio||1,2);
+    size = rect.width;
+    c.width = rect.width*dpr; c.height = rect.height*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  addEventListener('resize',resize);
+
+  const N = 140;
+  for(let i=0;i<N;i++){
+    particles.push({
+      a: Math.random()*Math.PI*2,
+      r: 20 + Math.random()*150,
+      speed: 0.002 + Math.random()*0.006,
+      drift: Math.random()*0.6+0.4,
+      size: Math.random()*2+0.6
+    });
+  }
+
+  function colorFor(mode){
+    if(mode==='listening') return '47,232,208';
+    if(mode==='speaking') return '139,107,255';
+    if(mode==='busy') return '232,169,79';
+    return '139,107,255';
+  }
+
+  function frame(){
+    requestAnimationFrame(frame);
+    if(!size){ resize(); if(!size) return; }
+    const cx = size/2, cy = size/2;
+    ctx.clearRect(0,0,size,size);
+    t += mode==='idle' ? 0.6 : (mode==='busy'?2.2:1.6);
+
+    const col = colorFor(mode);
+    const energyR = size*0.42;
+
+    // core ring
+    ctx.beginPath();
+    ctx.arc(cx,cy, energyR*0.34 + Math.sin(t*0.05)*4, 0, Math.PI*2);
+    ctx.strokeStyle = `rgba(${col},0.5)`;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    particles.forEach((p,i)=>{
+      p.a += p.speed * (mode==='busy'?2.4:1) * p.drift;
+      const wobble = Math.sin(t*0.01 + i)*8;
+      const rr = (p.r/170) * energyR + wobble;
+      const x = cx + Math.cos(p.a)*rr;
+      const y = cy + Math.sin(p.a)*rr*0.94;
+      const alpha = 0.15 + 0.55*(1-p.r/170);
+      ctx.beginPath();
+      ctx.arc(x,y,p.size,0,Math.PI*2);
+      ctx.fillStyle = `rgba(${col},${alpha})`;
+      ctx.fill();
+    });
+
+    // sweeping arc
+    ctx.beginPath();
+    ctx.arc(cx,cy,energyR*0.7, t*0.01, t*0.01+1.4);
+    ctx.strokeStyle = `rgba(${col},0.25)`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  frame();
+
+  return { set(m){ mode = m; } };
+})();
+
+function setAssistantMode(mode){
+  SwirlFX.set(mode);
+  document.getElementById('micbtn').classList.toggle('listening', mode==='listening');
+  document.getElementById('micbtn').classList.toggle('speaking', mode==='speaking' || mode==='busy');
+}
+
+/* =====================================================================
+   TRANSCRIPT
+===================================================================== */
+function addBubble(role, text, tag){
+  const wrap = document.getElementById('transcript');
+  const el = document.createElement('div');
+  el.className = 'bubble ' + role;
+  if(role==='user'){
+    el.innerHTML = `<div class="txt">${esc(text)}</div>`;
+  }else{
+    el.innerHTML = `<div class="txt">${tag?`<span class="tag mono">${esc(tag)}</span>`:''}${esc(text)}</div>`;
+  }
+  wrap.appendChild(el);
+  wrap.scrollTop = wrap.scrollHeight;
+  return el;
+}
+
+/* =====================================================================
+   SPEECH: recognition + synthesis
+===================================================================== */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognizer = null;
+if(SR){
+  recognizer = new SR();
+  recognizer.continuous = false;
+  recognizer.interimResults = false;
+  recognizer.lang = 'en-US';
+  recognizer.onresult = (e)=>{
+    const text = e.results[0][0].transcript;
+    document.getElementById('textin').value = text;
+    handleQuery(text);
+  };
+  recognizer.onend = ()=>{ V.listening=false; setAssistantMode('idle'); setStatus('STANDBY — SAY OR TYPE A COMMAND'); };
+  recognizer.onerror = ()=>{ V.listening=false; setAssistantMode('idle'); setStatus('MIC ERROR — TRY TYPING INSTEAD'); };
+}else{
+  document.getElementById('michint').textContent = 'VOICE UNSUPPORTED — TYPE INSTEAD';
+}
+
+const micbtn = document.getElementById('micbtn');
+micbtn.addEventListener('click', ()=>{
+  if(!recognizer) return;
+  if(V.listening){ recognizer.stop(); return; }
+  try{
+    recognizer.start();
+    V.listening = true;
+    setAssistantMode('listening');
+    setStatus('LISTENING…');
+  }catch(err){ /* already started */ }
 });
 
-/* ==========================================================================
-   NAVIGATION / TABS
-   ========================================================================== */
-function switchTab(tabName) {
-  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+function speak(text){
+  if(!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 1.02; u.pitch = 0.95;
+  u.onstart = ()=>{ V.speaking=true; setAssistantMode('speaking'); };
+  u.onend = ()=>{ V.speaking=false; setAssistantMode('idle'); setStatus('STANDBY — SAY OR TYPE A COMMAND'); };
+  window.speechSynthesis.speak(u);
+}
 
-  if (tabName === 'terminal') {
-    document.querySelectorAll('.tab-btn')[0].classList.add('active');
-    document.getElementById('view-terminal').classList.add('active');
-  } else if (tabName === 'map') {
-    document.querySelectorAll('.tab-btn')[1].classList.add('active');
-    document.getElementById('view-map').classList.add('active');
-    if (map) setTimeout(() => map.invalidateSize(), 200);
+/* =====================================================================
+   GEMINI
+===================================================================== */
+async function callGemini(prompt, systemInstruction){
+  if(!V.key) throw new Error('NO_KEY');
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(V.key)}`;
+  const body = {
+    contents:[{ role:'user', parts:[{text:prompt}] }],
+  };
+  if(systemInstruction) body.systemInstruction = { parts:[{text:systemInstruction}] };
+  const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+  if(!res.ok){
+    const errBody = await res.text().catch(()=> '');
+    throw new Error('GEMINI_HTTP_'+res.status+' '+errBody.slice(0,200));
+  }
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.map(p=>p.text).join('') || '';
+  return text;
+}
+
+const CLASSIFY_SYS = `You are the intent router for a voice/text OSINT assistant called Vortex.
+Given a user's message, output ONLY compact JSON (no markdown fences) with this shape:
+{"intent":"ip_lookup"|"whois"|"email_breach"|"username_sweep"|"general","target":"<extracted value or null>","reply":"<a short, confident, in-character spoken reply, max 22 words, said BEFORE the lookup runs, e.g. 'Locating that address now.' For general intent, this is the full conversational answer instead.>"}
+Rules:
+- ip_lookup: user wants to trace/locate an IP address, or their own IP/location ("what's my IP", "where am I"). target = the IP if given, else null (means self).
+- whois: user wants domain/WHOIS/DNS registration info for a domain name. target = domain.
+- email_breach: user wants to check if an email appears in data breaches. target = the email address.
+- username_sweep: user wants to check if a username/handle exists across platforms. target = the username.
+- general: anything else — answer it conversationally and helpfully as Vortex, a sharp, calm, confident assistant. target = null.
+Only ever act on data the user explicitly provided in this message. Never invent a target.`;
+
+async function classify(userText){
+  try{
+    const raw = await callGemini(userText, CLASSIFY_SYS);
+    const cleaned = raw.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(cleaned);
+    return parsed;
+  }catch(err){
+    return localClassify(userText);
   }
 }
 
-/* ==========================================================================
-   MAP INITIALIZATION (LEAFLET)
-   ========================================================================== */
-function initMap() {
-  map = L.map('map', {
-    center: [20, 0],
-    zoom: 2,
-    zoomControl: false
-  });
+function localClassify(userText){
+  const t = userText.trim();
+  const ipMatch = t.match(/\b(\d{1,3}\.){3}\d{1,3}\b/);
+  const emailMatch = t.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+  const domainMatch = t.match(/\b([a-z0-9-]+\.)+[a-z]{2,}\b/i);
+  const userMatch = t.match(/@([a-zA-Z0-9_]{2,30})\b/) || t.match(/username[:\s]+([a-zA-Z0-9_.-]{2,30})/i);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap'
-  }).addTo(map);
-
-  L.control.zoom({ position: 'bottomright' }).addTo(map);
+  if(/\bmy ip\b|\bwhere am i\b|\btrace me\b/i.test(t)) return {intent:'ip_lookup', target:null, reply:'Locating your connection now.'};
+  if(ipMatch || /\btrace\b|\bip lookup\b|\bgeolocat/i.test(t)) return {intent:'ip_lookup', target: ipMatch?ipMatch[0]:null, reply:'Tracing that address now.'};
+  if(emailMatch || /\bbreach\b|\bpwned\b|\bleaked\b/i.test(t)) return {intent:'email_breach', target: emailMatch?emailMatch[0]:null, reply:'Scanning breach records now.'};
+  if(/\bwhois\b|\bdomain\b|\bdns\b/i.test(t) && domainMatch) return {intent:'whois', target: domainMatch[0], reply:'Pulling registration records now.'};
+  if(/\busername\b|\bhandle\b/i.test(t) && userMatch) return {intent:'username_sweep', target: userMatch[1], reply:'Sweeping platforms now.'};
+  if(!V.key) return {intent:'general', target:null, reply:"I need a Gemini API key to hold a real conversation — add one in settings, top right. I can still run IP, WHOIS, breach, or username lookups if you give me a clear target."};
+  return {intent:'general', target:null, reply:"Give me an IP, domain, email, or username and I'll run it — or ask me anything else."};
 }
 
-function updateMapTarget(lat, lon, label) {
-  if (!map) return;
-  
-  if (currentMarker) {
-    map.removeLayer(currentMarker);
+/* =====================================================================
+   QUERY PIPELINE
+===================================================================== */
+async function handleQuery(text){
+  if(!text || !text.trim()) return;
+  document.getElementById('textin').value = '';
+  addBubble('user', text);
+  setAssistantMode('busy'); setStatus('THINKING…');
+
+  const result = await classify(text);
+  const reply = result.reply || '…';
+
+  if(result.intent === 'general'){
+    addBubble('vortex', reply, 'VORTEX');
+    speak(reply);
+    setAssistantMode('idle'); setStatus('STANDBY — SAY OR TYPE A COMMAND');
+    return;
   }
 
-  map.setView([lat, lon], 10);
+  addBubble('vortex', reply, result.intent.toUpperCase().replace('_',' '));
+  speak(reply);
 
-  const customIcon = L.divIcon({
-    className: 'custom-map-pin',
-    html: `<div style="
-      width: 14px; height: 14px; 
-      background: var(--accent); 
-      border-radius: 50%; 
-      box-shadow: 0 0 12px var(--accent);
-      border: 2px solid #fff;"></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7]
-  });
+  if(result.intent === 'ip_lookup') return runIPLookup(result.target);
+  if(result.intent === 'whois') return runWhois(result.target);
+  if(result.intent === 'email_breach') return runBreach(result.target);
+  if(result.intent === 'username_sweep') return runUsernameSweep(result.target);
 
-  currentMarker = L.marker([lat, lon], { icon: customIcon }).addTo(map);
-  currentMarker.bindPopup(`<b style="color:#000;">${label}</b><br>Lat: ${lat}, Lon: ${lon}`).openPopup();
+  setAssistantMode('idle'); setStatus('STANDBY — SAY OR TYPE A COMMAND');
 }
 
-/* ==========================================================================
-   CHAT & INTERFACE RENDERING
-   ========================================================================== */
-function addBubble(sender, text, meta = '') {
-  const container = document.getElementById('chat-container');
-  const div = document.createElement('div');
-  div.className = `bubble ${sender}`;
+document.getElementById('textform').addEventListener('submit', (e)=>{
+  e.preventDefault();
+  handleQuery(document.getElementById('textin').value);
+});
 
-  const metaText = meta ? meta : (sender === 'user' ? 'OPERATOR' : 'VORTEX');
-  div.innerHTML = `
-    <div class="meta mono">${metaText}</div>
-    <div>${esc(text)}</div>
+/* =====================================================================
+   SETTINGS PANEL
+===================================================================== */
+const settingsEl = document.getElementById('settings');
+const scrimEl = document.getElementById('scrim');
+const keyinput = document.getElementById('keyinput');
+keyinput.value = V.key;
+
+function openSettings(){ settingsEl.classList.add('visible'); scrimEl.classList.add('visible'); }
+function closeSettings(){ settingsEl.classList.remove('visible'); scrimEl.classList.remove('visible'); }
+document.getElementById('gearbtn').addEventListener('click', openSettings);
+scrimEl.addEventListener('click', closeSettings);
+
+document.getElementById('togglevis').addEventListener('click', ()=>{
+  keyinput.type = keyinput.type==='password' ? 'text' : 'password';
+});
+
+document.getElementById('savekey').addEventListener('click', ()=>{
+  const v = keyinput.value.trim();
+  const statusEl = document.getElementById('keystatus');
+  if(!v){ statusEl.textContent = 'ENTER A KEY FIRST'; statusEl.className='mono err'; return; }
+  V.key = v;
+  localStorage.setItem('vortex_gemini_key', v);
+  statusEl.textContent = 'KEY SAVED — VORTEX IS READY';
+  statusEl.className = 'mono ok';
+  setTimeout(closeSettings, 700);
+});
+
+document.getElementById('clearkey').addEventListener('click', ()=>{
+  V.key = '';
+  keyinput.value = '';
+  localStorage.removeItem('vortex_gemini_key');
+  const statusEl = document.getElementById('keystatus');
+  statusEl.textContent = 'KEY REMOVED';
+  statusEl.className = 'mono';
+});
+
+if(!V.key) setTimeout(openSettings, 500);
+
+/* =====================================================================
+   ================  IP GLOBE VIEW  (adapted trace engine)  ============
+===================================================================== */
+const GlobeFX = (function(){
+  const container = document.getElementById('globeview');
+  const canvas = document.getElementById('globe');
+  let ready = false, renderer, scene, camera, controls, globeGroup, markerGroup;
+  let RADIUS = 2, baseCameraZ = 6, flight=null, pendingShowCard=null, currentPos3D=null;
+  let pin=null, countryHalo=null, pingRing=null, countryLabel=null, pingStartTime=0, tracedNormal=null;
+  let isDragging=false, dragVelTheta=0, dragVelPhi=0, lastPointer={x:0,y:0,t:0};
+  const activePointers = new Map();
+  const DIVE_MS=600, HOLD_MS=100, PULLBACK_MS=850, FLIGHT_MS=DIVE_MS+HOLD_MS+PULLBACK_MS;
+  const DRAG_ROTATE_SPEED=0.006, INERTIA_DECAY=0.945, INERTIA_MIN=0.00004;
+
+  function easeInCubic(t){return t*t*t;}
+  function easeOutCubic(t){return 1-Math.pow(1-t,3);}
+  function easeInOutCubic(t){return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
+  function lerp(a,b,t){return a+(b-a)*t;}
+  function clamp01(t){return Math.max(0,Math.min(1,t));}
+
+  function latLonToVec3(lat,lon,r){
+    const phi=(90-lat)*(Math.PI/180), theta=(lon+180)*(Math.PI/180);
+    return new THREE.Vector3(-r*Math.sin(phi)*Math.cos(theta), r*Math.cos(phi), r*Math.sin(phi)*Math.sin(theta));
+  }
+
+  function init(){
+    if(ready) return;
+    renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+    renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 100);
+    camera.position.set(0,0,8);
+    globeGroup = new THREE.Group(); scene.add(globeGroup);
+
+    const sphereMat = new THREE.MeshPhongMaterial({color:0x0a0810, emissive:0x140a20, shininess:4, transparent:true, opacity:0.98});
+    globeGroup.add(new THREE.Mesh(new THREE.SphereGeometry(RADIUS,64,64), sphereMat));
+
+    const loader = new THREE.TextureLoader(); loader.crossOrigin='anonymous';
+    loader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/planets/earth_atmos_2048.jpg', (tex)=>{
+      const landMat = new THREE.MeshPhongMaterial({map:tex, transparent:true, opacity:0.45, blending:THREE.AdditiveBlending, depthWrite:false});
+      globeGroup.add(new THREE.Mesh(new THREE.SphereGeometry(RADIUS*1.001,64,64), landMat));
+    });
+
+    (function buildGraticule(r){
+      const group = new THREE.Group();
+      const mat = new THREE.LineBasicMaterial({color:0x3a2c5a, transparent:true, opacity:0.4});
+      const segs=72;
+      for(let lat=-60;lat<=60;lat+=30){ const pts=[]; for(let i=0;i<=segs;i++) pts.push(latLonToVec3(lat,(i/segs)*360-180,r)); group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat)); }
+      for(let lon=-180;lon<180;lon+=30){ const pts=[]; for(let i=0;i<=segs;i++) pts.push(latLonToVec3((i/segs)*180-90,lon,r)); group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat)); }
+      const eqPts=[]; for(let i=0;i<=segs;i++) eqPts.push(latLonToVec3(0,(i/segs)*360-180,r));
+      group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(eqPts), new THREE.LineBasicMaterial({color:0x6a4fd0, transparent:true, opacity:0.6})));
+      globeGroup.add(group);
+    })(RADIUS*1.006);
+
+    const glowMat = new THREE.MeshBasicMaterial({color:0x2fe8d0, transparent:true, opacity:0.14, side:THREE.BackSide});
+    globeGroup.add(new THREE.Mesh(new THREE.SphereGeometry(RADIUS*1.09,48,48), glowMat));
+
+    scene.add(new THREE.AmbientLight(0x443355,1.1));
+    const key1 = new THREE.DirectionalLight(0xffffff,0.9); key1.position.set(4,3,5); scene.add(key1);
+    const rim = new THREE.DirectionalLight(0x2fe8d0,0.35); rim.position.set(-4,-2,-3); scene.add(rim);
+
+    markerGroup = new THREE.Group(); scene.add(markerGroup);
+
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0,0,0); controls.enablePan=false; controls.enableDamping=true;
+    controls.dampingFactor=0.08; controls.zoomSpeed=0.7; controls.minDistance=RADIUS*1.35;
+    controls.maxDistance=12; controls.autoRotate=true; controls.autoRotateSpeed=3.4; controls.enableRotate=false;
+    controls.addEventListener('start', ()=>{ controls.autoRotate=false; });
+    controls.addEventListener('end', ()=>{
+      if(!isDragging && Math.abs(dragVelTheta)<=INERTIA_MIN && Math.abs(dragVelPhi)<=INERTIA_MIN) controls.autoRotate=true;
+    });
+
+    renderer.domElement.style.touchAction='none';
+    renderer.domElement.addEventListener('pointerdown', onPointerDown);
+    addEventListener('pointermove', onPointerMove);
+    addEventListener('pointerup', onPointerUp);
+    addEventListener('pointercancel', onPointerUp);
+    addEventListener('resize', resize);
+    resize();
+    animate();
+    ready = true;
+  }
+
+  function applyManualRotation(dTheta,dPhi){
+    const sph = new THREE.Spherical().setFromVector3(camera.position);
+    sph.theta -= dTheta; sph.phi = THREE.MathUtils.clamp(sph.phi-dPhi, 0.06, Math.PI-0.06);
+    camera.position.setFromSpherical(sph); camera.lookAt(0,0,0);
+  }
+  function onPointerDown(e){
+    if(flight) return;
+    activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(activePointers.size===1){ isDragging=true; controls.autoRotate=false; dragVelTheta=0; dragVelPhi=0; lastPointer={x:e.clientX,y:e.clientY,t:performance.now()}; }
+    else isDragging=false;
+  }
+  function onPointerMove(e){
+    if(!isDragging||flight||!activePointers.has(e.pointerId)||activePointers.size!==1) return;
+    const now=performance.now(), dx=e.clientX-lastPointer.x, dy=e.clientY-lastPointer.y, dt=Math.max(now-lastPointer.t,1);
+    const dTheta=dx*DRAG_ROTATE_SPEED, dPhi=dy*DRAG_ROTATE_SPEED;
+    applyManualRotation(dTheta,dPhi);
+    dragVelTheta=dTheta/dt; dragVelPhi=dPhi/dt; lastPointer={x:e.clientX,y:e.clientY,t:now};
+  }
+  function onPointerUp(e){ activePointers.delete(e.pointerId); if(activePointers.size===0) isDragging=false; }
+
+  const GLOBE_MARGIN = RADIUS*1.35;
+  function resize(){
+    if(!renderer) return;
+    const w=innerWidth, h=innerHeight;
+    renderer.setSize(w,h); camera.aspect=w/h;
+    const halfFovY = THREE.MathUtils.degToRad(camera.fov/2);
+    const distH = GLOBE_MARGIN/Math.tan(halfFovY);
+    const distW = GLOBE_MARGIN/(Math.tan(halfFovY)*camera.aspect);
+    baseCameraZ = Math.max(distH,distW,6);
+    if(!flight) camera.position.setLength(baseCameraZ);
+    if(controls) controls.maxDistance = baseCameraZ*1.8;
+    camera.updateProjectionMatrix();
+  }
+
+  function makeDotSprite(colorHex,size,opacity){
+    const c=document.createElement('canvas'); c.width=c.height=128;
+    const ctx=c.getContext('2d');
+    const grd=ctx.createRadialGradient(64,64,0,64,64,64);
+    grd.addColorStop(0,colorHex+'ff'); grd.addColorStop(0.35,colorHex+'aa'); grd.addColorStop(1,colorHex+'00');
+    ctx.fillStyle=grd; ctx.fillRect(0,0,128,128);
+    const tex=new THREE.CanvasTexture(c);
+    const mat=new THREE.SpriteMaterial({map:tex, transparent:true, depthWrite:false, opacity:opacity===undefined?1:opacity});
+    const spr=new THREE.Sprite(mat); spr.scale.set(size,size,1); return spr;
+  }
+  function makeRingSprite(colorHex){
+    const c=document.createElement('canvas'); c.width=c.height=128;
+    const ctx=c.getContext('2d'); ctx.strokeStyle=colorHex; ctx.lineWidth=6;
+    ctx.beginPath(); ctx.arc(64,64,52,0,Math.PI*2); ctx.stroke();
+    const tex=new THREE.CanvasTexture(c);
+    const mat=new THREE.SpriteMaterial({map:tex, transparent:true, depthWrite:false});
+    return new THREE.Sprite(mat);
+  }
+  function makeLabelSprite(text,colorHex,opts){
+    opts=opts||{};
+    const fontPx=opts.fontPx||38, weight=opts.weight||'700', baseHeight=opts.baseHeight||0.16, pad=16;
+    const c=document.createElement('canvas'); const ctx=c.getContext('2d');
+    ctx.font=weight+' '+fontPx+'px "JetBrains Mono", monospace';
+    const tw=ctx.measureText(text).width;
+    c.width=Math.ceil(tw+pad*2); c.height=Math.ceil(fontPx*1.6);
+    ctx.font=weight+' '+fontPx+'px "JetBrains Mono", monospace';
+    ctx.textBaseline='middle'; ctx.textAlign='left';
+    ctx.shadowColor='rgba(0,0,0,0.9)'; ctx.shadowBlur=6; ctx.fillStyle=colorHex;
+    ctx.fillText(text,pad,c.height/2);
+    const tex=new THREE.CanvasTexture(c); tex.minFilter=THREE.LinearFilter;
+    const mat=new THREE.SpriteMaterial({map:tex, transparent:true, depthWrite:false, depthTest:false});
+    const spr=new THREE.Sprite(mat);
+    const aspect=c.width/c.height;
+    spr.userData.aspect=aspect; spr.userData.baseHeight=baseHeight;
+    spr.scale.set(baseHeight*aspect, baseHeight, 1); spr.renderOrder=999;
+    return spr;
+  }
+  function makePin(){
+    const group=new THREE.Group();
+    const mat=new THREE.MeshBasicMaterial({color:0xff5d6c});
+    const headMat=new THREE.MeshBasicMaterial({color:0xffffff});
+    const stem=new THREE.Mesh(new THREE.ConeGeometry(0.028,0.15,14),mat);
+    stem.position.y=0.075; stem.rotation.x=Math.PI;
+    const head=new THREE.Mesh(new THREE.SphereGeometry(0.045,16,16),headMat);
+    head.position.y=0.15;
+    group.add(stem,head); return group;
+  }
+
+  function placeMarkers(lat,lon,countryName){
+    [countryHalo,pin,pingRing,countryLabel].forEach(m=>{ if(m) markerGroup.remove(m); });
+    const surfacePos = latLonToVec3(lat,lon,RADIUS);
+    const outward = surfacePos.clone().normalize();
+    tracedNormal = outward.clone();
+
+    countryHalo = makeDotSprite('#2fe8d0',1.7,0.55);
+    countryHalo.position.copy(surfacePos.clone().multiplyScalar(1.008));
+    markerGroup.add(countryHalo);
+
+    pingRing = makeRingSprite('#8b6bff');
+    pingRing.position.copy(surfacePos.clone().multiplyScalar(1.012));
+    pingRing.scale.set(0.3,0.3,1);
+    markerGroup.add(pingRing);
+    pingStartTime = performance.now();
+
+    pin = makePin();
+    pin.position.copy(surfacePos);
+    pin.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), outward);
+    markerGroup.add(pin);
+
+    if(countryName){
+      countryLabel = makeLabelSprite(countryName.toUpperCase(), '#c9c2ff', {fontPx:34});
+      countryLabel.position.copy(surfacePos.clone().multiplyScalar(1.02).add(outward.clone().multiplyScalar(-0.04)));
+      countryLabel.material.opacity = 0;
+      markerGroup.add(countryLabel);
+    }
+    return surfacePos.clone().multiplyScalar(1.03);
+  }
+
+  function perspectiveFactor(worldPos,min,max){
+    const d = camera.position.distanceTo(worldPos);
+    return THREE.MathUtils.clamp(d/6,min,max);
+  }
+
+  function updateZoomFX(ringScale,ringOpacity){
+    const dist = camera.position.length();
+    const zoomT = clamp01(1-(dist-controls.minDistance)/(controls.maxDistance-controls.minDistance));
+    if(pin){
+      const shrink = lerp(1.0,0.45,zoomT);
+      const persp = perspectiveFactor(pin.position,0.35,1.4);
+      const s = shrink*persp; pin.scale.set(s,s,s);
+    }
+    if(countryHalo){
+      countryHalo.material.opacity = lerp(0.55,0.16,zoomT);
+      const persp = perspectiveFactor(countryHalo.position,0.22,1.0);
+      const s = 1.7*persp; countryHalo.scale.set(s,s,1);
+    }
+    if(pingRing && ringScale!==undefined){
+      const persp = perspectiveFactor(pingRing.position,0.22,1.0);
+      const s = ringScale*persp; pingRing.scale.set(s,s,1);
+      pingRing.material.opacity = ringOpacity;
+    }
+    if(countryLabel){
+      const reveal = clamp01((zoomT-0.15)/0.5);
+      countryLabel.material.opacity = reveal*0.9;
+      const persp = perspectiveFactor(countryLabel.position,0.5,2.2);
+      const h = countryLabel.userData.baseHeight*persp;
+      countryLabel.scale.set(h*countryLabel.userData.aspect,h,1);
+    }
+  }
+
+  function animate(){
+    requestAnimationFrame(animate);
+    if(!container.classList.contains('active')) return;
+    if(flight){
+      const t = performance.now()-flight.start;
+      const rotT = Math.min(t/FLIGHT_MS,1);
+      const qStep = new THREE.Quaternion().identity().slerp(flight.rotQuat, easeInOutCubic(rotT));
+      const dir = flight.startDir.clone().applyQuaternion(qStep).normalize();
+      let radius;
+      if(t<DIVE_MS) radius = lerp(flight.startRadius, baseCameraZ*0.42, easeInCubic(t/DIVE_MS));
+      else if(t<DIVE_MS+HOLD_MS) radius = baseCameraZ*0.42;
+      else if(t<FLIGHT_MS) radius = lerp(baseCameraZ*0.42, baseCameraZ, easeOutCubic((t-DIVE_MS-HOLD_MS)/PULLBACK_MS));
+      else radius = baseCameraZ;
+      camera.position.copy(dir.multiplyScalar(radius));
+      camera.lookAt(0,0,0);
+      if(t>=FLIGHT_MS){
+        flight=null; controls.enabled=true;
+        if(pendingShowCard){ pendingShowCard(); pendingShowCard=null; controls.autoRotate=false; dragVelTheta=0; dragVelPhi=0; }
+      }
+    }
+    let ringScale, ringOpacity;
+    if(pingRing){
+      const el=((performance.now()-pingStartTime)%1600)/1600;
+      ringScale=lerp(0.3,2.0,el); ringOpacity=1-el;
+    }
+    const card = document.getElementById('gv-card');
+    if(!isDragging && !flight && !card.classList.contains('visible')){
+      if(Math.abs(dragVelTheta)>INERTIA_MIN||Math.abs(dragVelPhi)>INERTIA_MIN){
+        applyManualRotation(dragVelTheta*16, dragVelPhi*16);
+        dragVelTheta*=INERTIA_DECAY; dragVelPhi*=INERTIA_DECAY;
+      }else if(!controls.autoRotate) controls.autoRotate=true;
+    }
+    controls.update();
+    updateZoomFX(ringScale,ringOpacity);
+    renderer.render(scene,camera);
+  }
+
+  function facePoint(lat,lon){
+    controls.autoRotate=false; controls.enabled=false;
+    const startDir = camera.position.clone().normalize();
+    const endDir = latLonToVec3(lat,lon,1).normalize();
+    const rotQuat = new THREE.Quaternion().setFromUnitVectors(startDir,endDir);
+    flight = { startDir, startRadius: camera.position.length(), rotQuat, start: performance.now() };
+  }
+
+  async function fetchFromIpwho(ip){
+    const url = ip ? `https://ipwho.is/${encodeURIComponent(ip)}` : `https://ipwho.is/`;
+    const res = await fetch(url); const data = await res.json();
+    if(!data.success && data.success!==undefined) throw new Error(data.message||'lookup failed');
+    if(data.latitude==null) throw new Error('no geodata returned');
+    return { ip:data.ip, city:data.city, region:data.region, country:data.country, lat:data.latitude, lon:data.longitude,
+      isp:(data.connection||{}).isp, org:(data.connection||{}).org, asn:(data.connection||{}).asn,
+      tz:(data.timezone||{}).id, postal:data.postal, flag:(data.flag||{}).emoji };
+  }
+  async function fetchFromIpapi(ip){
+    const url = ip ? `https://ipapi.co/${encodeURIComponent(ip)}/json/` : `https://ipapi.co/json/`;
+    const res = await fetch(url); const data = await res.json();
+    if(data.error) throw new Error(data.reason||'lookup failed');
+    if(data.latitude==null) throw new Error('no geodata returned');
+    return { ip:data.ip, city:data.city, region:data.region, country:data.country_name, lat:data.latitude, lon:data.longitude,
+      isp:data.org, org:data.org, asn:data.asn, tz:data.timezone, postal:data.postal, flag:'' };
+  }
+
+  async function trace(ip){
+    init();
+    container.classList.add('active');
+    document.getElementById('gv-card').classList.remove('visible');
+    document.getElementById('gv-status').textContent = ip ? 'ACQUIRING TARGET…' : 'ACQUIRING SELF…';
+    resize();
+    try{
+      let result;
+      try{ result = await fetchFromIpwho(ip); }
+      catch(e){ result = await fetchFromIpapi(ip); }
+      renderResult(result);
+      document.getElementById('gv-status').textContent = 'TRACE COMPLETE // ORIGIN LOCKED';
+      return result;
+    }catch(err){
+      document.getElementById('gv-status').textContent = 'TRACE FAILED — ' + (err.message||'').toUpperCase();
+      throw err;
+    }
+  }
+
+  function renderResult(d){
+    const pos = placeMarkers(d.lat, d.lon, d.country);
+    currentPos3D = pos;
+    const card = document.getElementById('gv-card');
+    card.classList.remove('visible');
+    let asnLabel = '—';
+    if(d.asn!=null && d.asn!==''){ asnLabel = String(d.asn).toUpperCase().startsWith('AS') ? String(d.asn) : 'AS'+d.asn; }
+    card.innerHTML = `
+      <div id="gv-headrow">
+        ${d.flag?`<span style="font-size:20px;">${d.flag}</span>`:''}
+        <span class="loc">${esc(d.country||'UNKNOWN')}</span>
+        <span class="ip">${esc(d.ip||'')}</span>
+      </div>
+      <dl>
+        <div class="field"><dt>CITY</dt><dd>${esc(d.city||'—')}</dd></div>
+        <div class="field"><dt>REGION</dt><dd>${esc(d.region||'—')}</dd></div>
+        <div class="field"><dt>ISP</dt><dd>${esc(d.isp||'—')}</dd></div>
+        <div class="field"><dt>ORG</dt><dd>${esc(d.org||'—')}</dd></div>
+        <div class="field"><dt>ASN</dt><dd>${esc(asnLabel)}</dd></div>
+        <div class="field"><dt>TZ</dt><dd>${esc(d.tz||'—')}</dd></div>
+        <div class="field"><dt>POSTAL</dt><dd>${esc(d.postal||'—')}</dd></div>
+        <div class="field"><dt>COORDS</dt><dd>${d.lat.toFixed(2)}, ${d.lon.toFixed(2)}</dd></div>
+      </dl>`;
+    pendingShowCard = ()=> card.classList.add('visible');
+    facePoint(d.lat, d.lon);
+  }
+
+  document.getElementById('gv-close').addEventListener('click', ()=>{
+    container.classList.remove('active');
+    document.getElementById('gv-card').classList.remove('visible');
+    currentPos3D = null;
+    setAssistantMode('idle'); setStatus('STANDBY — SAY OR TYPE A COMMAND');
+  });
+
+  return { trace };
+})();
+
+async function runIPLookup(ip){
+  try{
+    const d = await GlobeFX.trace(ip || null);
+    const summary = `Trace locked. ${d.city?d.city+', ':''}${d.country||'unknown location'}, running through ${d.isp||d.org||'an unlisted provider'}.`;
+    addBubble('vortex', summary, 'RESULT');
+    speak(summary);
+  }catch(err){
+    const msg = "Couldn't complete that trace — the lookup service didn't return usable data.";
+    addBubble('vortex', msg, 'ERROR');
+    speak(msg);
+  }
+  setAssistantMode('idle'); setStatus('STANDBY — SAY OR TYPE A COMMAND');
+}
+
+/* =====================================================================
+   ================  GENERIC RESULT VIEW  ===============================
+===================================================================== */
+const rvContainer = document.getElementById('resultview');
+const rvInner = document.getElementById('rv-inner');
+const rvTitle = document.getElementById('rv-title');
+
+function openResultView(titleMain, titleSub){
+  rvTitle.innerHTML = `${esc(titleMain)}<small>${esc(titleSub)}</small>`;
+  rvInner.innerHTML = `<div id="rv-loading"><div id="rv-spinner"></div><div id="rv-loadtext" class="mono">GATHERING DATA…</div></div>`;
+  rvContainer.classList.add('active');
+}
+function closeResultView(){
+  rvContainer.classList.remove('active');
+  setAssistantMode('idle'); setStatus('STANDBY — SAY OR TYPE A COMMAND');
+}
+document.getElementById('rv-close').addEventListener('click', closeResultView);
+
+function renderBlocks(target, sub, blocksHtml){
+  rvInner.innerHTML = `
+    <div id="rv-target">${esc(target)}</div>
+    <div id="rv-sub" class="mono">${esc(sub)}</div>
+    <div class="scanline" style="animation-delay:.05s"></div>
+    ${blocksHtml}
   `;
-
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
+  rvInner.querySelectorAll('.rv-block').forEach((el,i)=>{
+    el.style.animationDelay = (0.1 + i*0.09) + 's';
+  });
 }
 
-function renderBlocks(title, statusText, htmlContent) {
-  document.getElementById('vp-title').innerText = `TARGET DATA // ${title.toUpperCase()}`;
-  document.getElementById('vp-status').innerText = statusText;
-
-  const terminal = document.getElementById('view-terminal');
-  terminal.innerHTML = htmlContent;
-}
-
-function setStatus(text) {
-  document.getElementById('sys-status').innerText = text;
-}
-
-function setAssistantMode(mode) {
-  const vpStatus = document.getElementById('vp-status');
-  if (mode === 'thinking') {
-    vpStatus.innerText = 'PROCESSING...';
-    vpStatus.style.color = 'var(--warning)';
-  } else if (mode === 'idle') {
-    vpStatus.innerText = 'COMPLETE';
-    vpStatus.style.color = 'var(--accent)';
-  }
-}
-
-function esc(str) {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-/* ==========================================================================
-   VOICE & SPEECH SYNTHESIS
-   ========================================================================== */
-function speak(text) {
-  if (!synth) return;
-  synth.cancel(); // Stop ongoing speech
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = 1.0;
-  utterance.pitch = 0.9;
-  
-  // Try to pick a crisp English voice
-  const voices = synth.getVoices();
-  const preferred = voices.find(v => v.lang.includes('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Daniel')));
-  if (preferred) utterance.voice = preferred;
-
-  synth.speak(utterance);
-}
-
-function initWebSpeech() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    console.warn("Speech Recognition API not supported in this browser.");
+/* ---------- WHOIS / domain via RDAP ---------- */
+async function runWhois(domain){
+  if(!domain){
+    const msg = "I need a domain name to look up — try 'whois example.com'.";
+    addBubble('vortex', msg, 'ERROR'); speak(msg);
+    setAssistantMode('idle'); setStatus('STANDBY — SAY OR TYPE A COMMAND');
     return;
   }
+  openResultView('DOMAIN TRACE','RDAP REGISTRATION LOOKUP');
+  try{
+    const res = await fetch(`https://rdap.org/domain/${encodeURIComponent(domain)}`);
+    if(!res.ok) throw new Error('No RDAP record ('+res.status+')');
+    const d = await res.json();
 
-  recognition = new SpeechRecognition();
-  recognition.continuous = false;
-  recognition.interimResults = false;
-  recognition.lang = 'en-US';
-
-  recognition.onstart = () => {
-    isListening = true;
-    document.getElementById('mic-btn').style.background = 'var(--danger)';
-    document.getElementById('mic-btn').style.color = '#fff';
-    setStatus('LISTENING FOR VOICE COMMAND...');
-  };
-
-  recognition.onend = () => {
-    isListening = false;
-    document.getElementById('mic-btn').style.background = '';
-    document.getElementById('mic-btn').style.color = '';
-    setStatus('STANDBY — SAY OR TYPE A COMMAND');
-  };
-
-  recognition.onresult = (e) => {
-    const transcript = e.results[0][0].transcript;
-    document.getElementById('cmd-input').value = transcript;
-    addBubble('user', transcript);
-    processInput(transcript);
-  };
-}
-
-function toggleVoice() {
-  if (!recognition) {
-    alert("Speech recognition is not supported on this browser/platform.");
-    return;
-  }
-  if (isListening) {
-    recognition.stop();
-  } else {
-    recognition.start();
-  }
-}
-
-/* ==========================================================================
-   COMMAND PARSER & RECON LOGIC
-   ========================================================================== */
-function executeCommand() {
-  const input = document.getElementById('cmd-input');
-  const val = input.value.trim();
-  if (!val) return;
-
-  addBubble('user', val);
-  input.value = '';
-  processInput(val);
-}
-
-function processInput(query) {
-  const clean = query.toLowerCase().trim();
-  setAssistantMode('thinking');
-  setStatus(`EXECUTING RECON: ${query}`);
-
-  // RegEx Detectors
-  const ipRegex = /\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/;
-  const domainRegex = /\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-2]{2,6}\b/i;
-
-  if (ipRegex.test(clean)) {
-    const ip = clean.match(ipRegex)[0];
-    runIPRecon(ip);
-  } else if (clean.startsWith('ip ') || clean.startsWith('trace ')) {
-    const target = clean.replace(/^(ip|trace)\s+/, '').trim();
-    runIPRecon(target);
-  } else if (clean.startsWith('handle ') || clean.startsWith('user ') || clean.startsWith('@')) {
-    const user = clean.replace(/^(handle|user|@)\s*/, '').trim();
-    runHandleRecon(user);
-  } else if (domainRegex.test(clean) && !clean.includes(' ')) {
-    runDomainRecon(clean);
-  } else {
-    // Default fallback to handle/general target search
-    runHandleRecon(clean.replace(/[^a-zA-Z0-9_-]/g, ''));
-  }
-}
-
-/* --- RECON MODULE: IP GEOLOCATION --- */
-async function runIPRecon(ip) {
-  addBubble('system', `Initiating Geolocation & Network sweep for IP: ${ip}...`);
-
-  try {
-    const res = await fetch(`https://ipapi.co/${ip}/json/`);
-    if (!res.ok) throw new Error('API Rate limit or network error');
-    const data = await res.json();
-
-    if (data.error) {
-      throw new Error(data.reason || 'Invalid IP');
-    }
+    const events = {};
+    (d.events||[]).forEach(e=>{ events[e.eventAction] = e.eventDate; });
+    const statuses = (d.status||[]).join(', ') || '—';
+    const nameservers = (d.nameservers||[]).map(n=>n.ldhName).filter(Boolean);
+    let registrar = '—';
+    (d.entities||[]).forEach(ent=>{
+      if((ent.roles||[]).includes('registrar')){
+        const vcard = ent.vcardArray && ent.vcardArray[1];
+        if(vcard){ const fn = vcard.find(f=>f[0]==='fn'); if(fn) registrar = fn[3]; }
+        if(registrar==='—' && ent.publicIds) registrar = ent.publicIds[0]?.identifier || '—';
+      }
+    });
 
     const blocks = `
-      <div class="rv-block">
-        <div class="label mono">IP NETWORK IDENTIFICATION</div>
+      <div class="rv-block"><div class="label mono">REGISTRATION</div>
         <div class="rv-grid">
-          <div class="rv-cell"><div class="k mono">IP ADDRESS</div><div class="v">${esc(data.ip)}</div></div>
-          <div class="rv-cell"><div class="k mono">VERSION</div><div class="v">${esc(data.version || 'IPv4')}</div></div>
-          <div class="rv-cell"><div class="k mono">ASN</div><div class="v">${esc(data.asn || 'N/A')}</div></div>
-          <div class="rv-cell"><div class="k mono">ORGANIZATION / ISP</div><div class="v">${esc(data.org || data.asn_org || 'N/A')}</div></div>
+          <div class="rv-cell"><div class="k mono">REGISTRAR</div><div class="v">${esc(registrar)}</div></div>
+          <div class="rv-cell"><div class="k mono">STATUS</div><div class="v">${esc(statuses)}</div></div>
+          <div class="rv-cell"><div class="k mono">CREATED</div><div class="v">${esc((events.registration||'—').slice(0,10))}</div></div>
+          <div class="rv-cell"><div class="k mono">EXPIRES</div><div class="v">${esc((events.expiration||'—').slice(0,10))}</div></div>
         </div>
       </div>
-
-      <div class="rv-block">
-        <div class="label mono">GEOGRAPHIC LOCATION</div>
-        <div class="rv-grid">
-          <div class="rv-cell"><div class="k mono">CITY / REGION</div><div class="v">${esc(data.city)}, ${esc(data.region)}</div></div>
-          <div class="rv-cell"><div class="k mono">COUNTRY</div><div class="v">${esc(data.country_name)} (${esc(data.country_code)})</div></div>
-          <div class="rv-cell"><div class="k mono">POSTAL CODE</div><div class="v">${esc(data.postal || 'N/A')}</div></div>
-          <div class="rv-cell"><div class="k mono">LATITUDE / LONGITUDE</div><div class="v">${data.latitude}, ${data.longitude}</div></div>
-          <div class="rv-cell"><div class="k mono">TIMEZONE</div><div class="v">${esc(data.timezone || 'N/A')}</div></div>
-        </div>
-      </div>
-    `;
-
-    renderBlocks(ip, 'SWEEP COMPLETE', blocks);
-
-    if (data.latitude && data.longitude) {
-      updateMapTarget(data.latitude, data.longitude, `IP: ${ip} (${data.city}, ${data.country_name})`);
-    }
-
-    const summary = `Target IP ${ip} located in ${data.city}, ${data.country_name}. ISP is ${data.org || 'Unknown'}.`;
-    addBubble('system', summary, 'RESULT');
-    speak(summary);
-
-  } catch (err) {
-    const errorHTML = `<div class="rv-block"><div class="label mono" style="color:var(--danger);">ERROR</div><div>Failed to trace IP: ${esc(err.message)}</div></div>`;
-    renderBlocks(ip, 'FAILED', errorHTML);
-    addBubble('system', `IP Recon failed for ${ip}: ${err.message}`, 'ERROR');
-  } finally {
-    setAssistantMode('idle');
-    setStatus('STANDBY — SAY OR TYPE A COMMAND');
-  }
-}
-
-/* --- RECON MODULE: DOMAIN WHOIS / DNS --- */
-async function runDomainRecon(domain) {
-  addBubble('system', `Executing DNS and Domain lookup for ${domain}...`);
-
-  try {
-    const res = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(domain)}`);
-    const data = await res.json();
-
-    let recordsHTML = '';
-    let ipToTrace = null;
-
-    if (data.Answer && data.Answer.length > 0) {
-      recordsHTML = data.Answer.map(ans => {
-        if (ans.type === 1 && !ipToTrace) ipToTrace = ans.data; // First A record
-        return `
-          <div class="rv-listitem">
-            <span class="mono">${esc(ans.name)}</span>
-            <span class="mono" style="color:var(--accent);">${esc(ans.data)}</span>
-          </div>
-        `;
-      }).join('');
-    } else {
-      recordsHTML = `<div style="color:var(--ink-dim)">No DNS records retrieved.</div>`;
-    }
-
-    const blocks = `
-      <div class="rv-block">
-        <div class="label mono">DOMAIN TARGET</div>
-        <div class="rv-grid">
-          <div class="rv-cell"><div class="k mono">DOMAIN</div><div class="v">${esc(domain)}</div></div>
-          <div class="rv-cell"><div class="k mono">DNS STATUS</div><div class="v">${data.Status === 0 ? 'NO ERROR' : 'ERROR ' + data.Status}</div></div>
-        </div>
-      </div>
-
-      <div class="rv-block">
-        <div class="label mono">RESOLVED DNS RECORDS</div>
+      <div class="scanline"></div>
+      <div class="rv-block"><div class="label mono">NAMESERVERS</div>
         <div class="rv-list">
-          ${recordsHTML}
+          ${nameservers.length ? nameservers.map(ns=>`<div class="rv-listitem"><span>${esc(ns)}</span></div>`).join('') : '<div class="rv-note">No nameservers listed.</div>'}
         </div>
-      </div>
-    `;
+      </div>`;
+    renderBlocks(domain, 'RDAP LOOKUP COMPLETE', blocks);
 
-    renderBlocks(domain, 'DNS RESOLVED', blocks);
-
-    const summary = `Domain ${domain} resolved. Found ${data.Answer ? data.Answer.length : 0} DNS records.`;
-    addBubble('system', summary, 'RESULT');
-    speak(summary);
-
-    if (ipToTrace) {
-      addBubble('system', `Automatically tracing primary IP: ${ipToTrace}...`);
-      runIPRecon(ipToTrace);
-    }
-
-  } catch (err) {
-    addBubble('system', `Domain resolution failed for ${domain}.`, 'ERROR');
-  } finally {
-    setAssistantMode('idle');
-    setStatus('STANDBY — SAY OR TYPE A COMMAND');
+    const summary = `${domain} is registered through ${registrar}${events.expiration?', expiring '+events.expiration.slice(0,10):''}.`;
+    addBubble('vortex', summary, 'RESULT'); speak(summary);
+  }catch(err){
+    rvInner.innerHTML = `<div class="rv-block" style="animation-delay:0s"><div class="label mono">NO RECORD</div><div class="rv-note">${esc(err.message||'This domain has no public RDAP record, or the registry does not expose one.')}</div></div>`;
+    const msg = `No public registration record found for ${domain}.`;
+    addBubble('vortex', msg, 'ERROR'); speak(msg);
   }
 }
 
-/* --- RECON MODULE: HANDLE / USERNAME SWEEP --- */
-async function runHandleRecon(username) {
-  addBubble('system', `Initiating Social Reconnaissance for handle: @${username}...`);
-
-  // Simulated CORS-safe check on select endpoints (e.g. GitHub) & generate platform links
-  let githubStatus = 'unknown';
-  let githubNote = 'Checking...';
-
-  try {
-    const res = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}`);
-    if(res.status === 200){
-      githubStatus = 'found';
-      const user = await res.json();
-      githubNote = user.name ? `${user.name} (${user.public_repos} repos)` : `${user.public_repos} repos`;
-    } else if(res.status === 404){
-      githubStatus = 'clear';
-      githubNote = 'Available';
-    } else {
-      githubStatus = 'unknown';
-      githubNote = 'Rate limited';
-    }
-  }catch(e){
-    githubStatus = 'unknown';
-    githubNote = 'Request failed';
+/* ---------- Email breach check via XposedOrNot ---------- */
+async function runBreach(email){
+  if(!email){
+    const msg = "I need an email address to check — try 'check jane@example.com for breaches'.";
+    addBubble('vortex', msg, 'ERROR'); speak(msg);
+    setAssistantMode('idle'); setStatus('STANDBY — SAY OR TYPE A COMMAND');
+    return;
   }
+  openResultView('BREACH SCAN','EXPOSURE CHECK');
+  try{
+    const res = await fetch(`https://api.xposedornot.com/v1/check-email/${encodeURIComponent(email)}`);
+    const data = await res.json();
+    const breaches = data?.breaches?.[0] || [];
+    const found = Array.isArray(breaches) && breaches.length && breaches[0] !== 'none';
 
-  const platforms = [
-    { name: 'GitHub', status: githubStatus, note: githubNote, url: `https://github.com/${username}` },
-    { name: 'X / Twitter', status: 'link', note: 'Direct Profile Link', url: `https://x.com/${username}` },
-    { name: 'Instagram', status: 'link', note: 'Direct Profile Link', url: `https://instagram.com/${username}` },
-    { name: 'Reddit', status: 'link', note: 'Direct Profile Link', url: `https://reddit.com/user/${username}` },
-    { name: 'TikTok', status: 'link', note: 'Direct Profile Link', url: `https://tiktok.com/@${username}` },
-    { name: 'Twitch', status: 'link', note: 'Direct Profile Link', url: `https://twitch.tv/${username}` }
+    const blocks = `
+      <div class="rv-block"><div class="label mono">STATUS</div>
+        <div class="rv-grid">
+          <div class="rv-cell"><div class="k mono">RESULT</div><div class="v ${found?'hit':'clear'}">${found ? breaches.length+' BREACH(ES) FOUND' : 'NO BREACHES FOUND'}</div></div>
+          <div class="rv-cell"><div class="k mono">CHECKED</div><div class="v">${esc(email)}</div></div>
+        </div>
+      </div>
+      <div class="scanline"></div>
+      <div class="rv-block"><div class="label mono">${found?'EXPOSED IN':'NOTES'}</div>
+        <div class="rv-list">
+          ${found ? breaches.map(b=>`<div class="rv-listitem"><span>${esc(b)}</span><span class="status found mono">EXPOSED</span></div>`).join('')
+                  : '<div class="rv-note">This address did not appear in any known public breach dataset at the time of the check. That does not guarantee it is safe — always use unique passwords and enable two-factor authentication.</div>'}
+        </div>
+      </div>`;
+    renderBlocks(email, 'XPOSEDORNOT SCAN COMPLETE', blocks);
+
+    const summary = found ? `${email} appears in ${breaches.length} known breach${breaches.length===1?'':'es'}.` : `${email} was not found in any known breach.`;
+    addBubble('vortex', summary, 'RESULT'); speak(summary);
+  }catch(err){
+    rvInner.innerHTML = `<div class="rv-block" style="animation-delay:0s"><div class="label mono">SCAN FAILED</div><div class="rv-note">The breach index could not be reached. Try again shortly.</div></div>`;
+    const msg = 'The breach scan failed to complete.';
+    addBubble('vortex', msg, 'ERROR'); speak(msg);
+  }
+}
+
+/* ---------- Username sweep ---------- */
+async function runUsernameSweep(username){
+  if(!username){
+    const msg = "I need a username to sweep — try 'check if the username shadow99 exists'.";
+    addBubble('vortex', msg, 'ERROR'); speak(msg);
+    setAssistantMode('idle'); setStatus('STANDBY — SAY OR TYPE A COMMAND');
+    return;
+  }
+  openResultView('IDENTITY SWEEP','USERNAME AVAILABILITY');
+
+  let githubStatus = 'unknown', githubNote = '';
+  try{
+    const res = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}`);
+    if(res.status === 200) githubStatus = 'found';
+    else if(res.status === 404) githubStatus = 'clear';
+  }catch(e){ /* leave unknown */ }
+
+  const otherPlatforms = [
+    {name:'Reddit', url:`https://www.reddit.com/user/${encodeURIComponent(username)}`},
+    {name:'X / Twitter', url:`https://x.com/${encodeURIComponent(username)}`},
+    {name:'Instagram', url:`https://instagram.com/${encodeURIComponent(username)}`},
+    {name:'TikTok', url:`https://tiktok.com/@${encodeURIComponent(username)}`},
   ];
 
-  const listItems = platforms.map(p => {
-    let statusBadge = '';
-    if (p.status === 'found') {
-      statusBadge = `<span class="status found mono">TAKEN</span>`;
-    } else if (p.status === 'clear') {
-      statusBadge = `<span class="status clear mono">FREE</span>`;
-    } else {
-      statusBadge = `<span class="status unknown mono">VERIFY</span>`;
-    }
-
-    return `
-      <div class="rv-listitem">
-        <div>
-          <a href="${esc(p.url)}" target="_blank" rel="noopener"><strong>${esc(p.name)}</strong></a>
-          <div style="font-size:10px;color:var(--ink-dim);margin-top:2px;">${esc(p.note)}</div>
-        </div>
-        <div>${statusBadge}</div>
-      </div>
-    `;
-  }).join('');
+  const statusLabel = s => s==='found' ? '<span class="status found mono">FOUND</span>' : s==='clear' ? '<span class="status clear mono">AVAILABLE</span>' : '<span class="status unknown mono">UNVERIFIED</span>';
 
   const blocks = `
-    <div class="rv-block"><div class="label mono">TARGET HANDLE</div>
-      <div class="rv-grid">
-        <div class="rv-cell"><div class="k mono">HANDLE</div><div class="v">@${esc(username)}</div></div>
-        <div class="rv-cell"><div class="k mono">GITHUB STATUS</div><div class="v ${githubStatus === 'found' ? 'hit' : githubStatus === 'clear' ? 'clear' : ''}">${githubStatus.toUpperCase()}</div></div>
+    <div class="rv-block"><div class="label mono">VERIFIED (LIVE API)</div>
+      <div class="rv-list">
+        <div class="rv-listitem"><a href="https://github.com/${esc(username)}" target="_blank" rel="noopener">GitHub — ${esc(username)}</a>${statusLabel(githubStatus)}</div>
       </div>
     </div>
     <div class="scanline"></div>
-    <div class="rv-block"><div class="label mono">PLATFORM AUDIT</div>
+    <div class="rv-block"><div class="label mono">DIRECT LINKS (UNVERIFIED)</div>
       <div class="rv-list">
-        ${listItems}
+        ${otherPlatforms.map(p=>`<div class="rv-listitem"><a href="${p.url}" target="_blank" rel="noopener">${esc(p.name)}</a>${statusLabel('unknown')}</div>`).join('')}
       </div>
-    </div>
-    <div class="rv-note" style="margin-top:12px;">Direct links provided for manual verification to bypass CORS policies across social networks.</div>
-  `;
+      <div class="rv-note" style="margin-top:10px;">These platforms block cross-origin checks from the browser, so existence can't be confirmed automatically — the links open the profile directly.</div>
+    </div>`;
+  renderBlocks(username, 'IDENTITY SWEEP COMPLETE', blocks);
 
-  renderBlocks(`@${username}`, 'PLATFORM SWEEP COMPLETE', blocks);
-
-  let summary = '';
-  if (githubStatus === 'found') {
-    summary = `Username @${username} is taken on GitHub (${githubNote}). Profile links generated for manual sweep.`;
-  } else if (githubStatus === 'clear') {
-    summary = `Username @${username} is available on GitHub. Direct links generated for manual sweep on other networks.`;
-  } else {
-    summary = `Sweep complete for @${username}. Check the generated links to verify profile existence.`;
-  }
-
-  addBubble('system', summary, 'RESULT');
-  speak(summary);
-  setAssistantMode('idle');
-  setStatus('STANDBY — SAY OR TYPE A COMMAND');
+  const summary = githubStatus==='found' ? `${username} exists on GitHub. Other platforms need a manual check via the links shown.` :
+    githubStatus==='clear' ? `${username} is available on GitHub. Other platforms need a manual check.` :
+    `Swept what I could reach for ${username} — see the links for the rest.`;
+  addBubble('vortex', summary, 'RESULT'); speak(summary);
 }
 </script>
 </body>
