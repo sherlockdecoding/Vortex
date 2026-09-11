@@ -103,6 +103,7 @@ canvas#swirl{width:min(78vmin,480px);height:min(78vmin,480px);}
 #micbtn.listening{border-color:var(--cyan);}
 #micbtn.listening svg{stroke:var(--cyan);}
 #micbtn.speaking{border-color:var(--violet);}
+#micbtn:disabled{opacity:.55;cursor:wait;}
 #micring{position:absolute;inset:-10px;border-radius:50%;border:1px solid var(--cyan);opacity:0;}
 #micbtn.listening #micring{animation:ringPulse 1.4s ease-out infinite;}
 @keyframes ringPulse{0%{opacity:.6;transform:scale(.9);}100%{opacity:0;transform:scale(1.5);}}
@@ -492,6 +493,14 @@ let micProcessor = null;
 let micGain = null;
 let liveStarting = false;
 let liveWanted = false;
+let liveGeneration = 0;
+let liveOpenPromise = null;
+let liveOpenResolve = null;
+let liveOpenReject = null;
+let liveResumeHandle = null;
+let liveToolRunning = false;
+let currentInputBubble = null;
+let currentInputText = '';
 
 let playbackContext = null;
 let playbackNextTime = 0;
@@ -565,43 +574,67 @@ function pcm16ToAudioBuffer(bytes, sampleRate){
 
 function stopPlayback(){
   for(const source of activeSources){
-    try{ source.stop(0); }catch(e){}
+    try{ source.onended = null; source.stop(0); }catch(e){}
   }
-
   activeSources.clear();
   playbackNextTime = playbackContext ? playbackContext.currentTime : 0;
   modelSpeaking = false;
 }
 
 function playPCMChunk(b64){
-  if(!playbackContext) return;
+  if(!playbackContext || !b64) return;
 
-  const buffer = pcm16ToAudioBuffer(base64ToBytes(b64), 24000);
-  if(!buffer) return;
+  try{
+    const buffer = pcm16ToAudioBuffer(base64ToBytes(b64), 24000);
+    if(!buffer) return;
 
-  const now = playbackContext.currentTime;
-  playbackNextTime = Math.max(playbackNextTime, now);
+    const now = playbackContext.currentTime;
+    playbackNextTime = Math.max(playbackNextTime, now);
 
-  const source = playbackContext.createBufferSource();
-  source.buffer = buffer;
-  source.connect(playbackMaster || playbackContext.destination);
-  activeSources.add(source);
+    const source = playbackContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(playbackMaster || playbackContext.destination);
+    activeSources.add(source);
 
-  source.onended = ()=>{
-    activeSources.delete(source);
+    source.onended = ()=>{
+      activeSources.delete(source);
+      if(activeSources.size === 0){
+        modelSpeaking = false;
+        if(liveSession && liveWanted){
+          setAssistantMode('listening');
+          setStatus('LIVE — LISTENING');
+        }
+      }
+    };
 
-    if(activeSources.size === 0 && liveSession && !modelSpeaking){
-      setAssistantMode('listening');
-      setStatus('LIVE — LISTENING');
-    }
-  };
+    source.start(playbackNextTime);
+    playbackNextTime += buffer.duration;
 
-  source.start(playbackNextTime);
-  playbackNextTime += buffer.duration;
+    modelSpeaking = true;
+    setAssistantMode('speaking');
+    setStatus('VORTEX SPEAKING…');
+  }catch(err){
+    console.warn('PCM playback failed:', err);
+  }
+}
 
-  modelSpeaking = true;
-  setAssistantMode('speaking');
-  setStatus('VORTEX SPEAKING…');
+function updateInputTranscript(text){
+  if(!text) return;
+  currentInputText += text;
+
+  if(!currentInputBubble){
+    currentInputBubble = addBubble('user', '');
+  }
+  const txt = currentInputBubble.querySelector('.txt');
+  if(txt) txt.textContent = currentInputText;
+
+  const transcript = document.getElementById('transcript');
+  transcript.scrollTop = transcript.scrollHeight;
+}
+
+function finishInputTranscript(){
+  currentInputBubble = null;
+  currentInputText = '';
 }
 
 function addLiveModelText(text){
@@ -628,7 +661,72 @@ function finishLiveModelText(){
   currentModelText = '';
 }
 
+async function handleLiveToolCall(toolCall){
+  const calls = toolCall?.functionCalls || [];
+  if(!calls.length || !liveSession) return;
+
+  liveToolRunning = true;
+  const session = liveSession;
+  const responses = [];
+
+  for(const fc of calls){
+    const name = fc?.name;
+    const args = fc?.args || {};
+    try{
+      let result;
+
+      if(name === 'ip_lookup'){
+        const target = typeof args.ip === 'string' && args.ip.trim() ? args.ip.trim() : null;
+        result = await runIPLookup(target, {fromLiveTool:true});
+      }else if(name === 'domain_whois'){
+        result = await runWhois(String(args.domain || '').trim(), {fromLiveTool:true});
+      }else if(name === 'email_breach_check'){
+        result = await runBreach(String(args.email || '').trim(), {fromLiveTool:true});
+      }else if(name === 'username_sweep'){
+        result = await runUsernameSweep(String(args.username || '').trim(), {fromLiveTool:true});
+      }else{
+        throw new Error('Unknown tool: '+name);
+      }
+
+      responses.push({
+        id:fc.id,
+        name,
+        response:{result: result ?? {ok:true}}
+      });
+    }catch(err){
+      responses.push({
+        id:fc.id,
+        name,
+        response:{error:String(err?.message || err)}
+      });
+    }
+  }
+
+  try{
+    if(liveSession === session && liveWanted){
+      session.sendToolResponse({functionResponses:responses});
+    }
+  }catch(err){
+    console.warn('Failed to send tool response:', err);
+  }finally{
+    liveToolRunning = false;
+  }
+}
+
 function handleLiveMessage(message){
+  if(message?.sessionResumptionUpdate){
+    const u = message.sessionResumptionUpdate;
+    if(u.resumable && u.newHandle){
+      liveResumeHandle = u.newHandle;
+    }
+  }
+
+  if(message?.toolCall){
+    handleLiveToolCall(message.toolCall).catch(err=>{
+      console.error('Live tool call failed:', err);
+    });
+  }
+
   const content = message?.serverContent;
 
   if(content?.interrupted){
@@ -640,11 +738,7 @@ function handleLiveMessage(message){
   }
 
   if(content?.inputTranscription?.text){
-    const text = content.inputTranscription.text.trim();
-
-    if(text){
-      addBubble('user', text);
-    }
+    updateInputTranscript(content.inputTranscription.text);
   }
 
   if(content?.outputTranscription?.text){
@@ -656,24 +750,34 @@ function handleLiveMessage(message){
       if(part?.inlineData?.data){
         playPCMChunk(part.inlineData.data);
       }
-
       if(part?.text){
         addLiveModelText(part.text);
       }
     }
   }
 
-  if(content?.turnComplete){
-    finishLiveModelText();
+  if(content?.generationComplete){
+    // Audio buffers can still be draining. playback onended owns the speaking state.
+    if(activeSources.size === 0 && liveSession){
+      modelSpeaking = false;
+      setAssistantMode('listening');
+      setStatus('LIVE — LISTENING');
+    }
+  }
 
-    if(!modelSpeaking){
+  if(content?.turnComplete){
+    finishInputTranscript();
+    finishLiveModelText();
+    if(activeSources.size === 0 && !liveToolRunning){
+      modelSpeaking = false;
       setAssistantMode('listening');
       setStatus('LIVE — LISTENING');
     }
   }
 
   if(message?.goAway){
-    setStatus('LIVE SESSION ENDING — RECONNECTING…');
+    const left = message.goAway?.timeLeft;
+    setStatus(left ? `LIVE RECONNECTING IN ${Math.ceil(Number(left)/1000)}s…` : 'LIVE SESSION ENDING — RECONNECTING…');
   }
 }
 
@@ -793,7 +897,11 @@ function stopMicrophone(){
 }
 
 async function connectLive(){
-  if(liveSession || liveStarting) return liveSession;
+  if(liveSession) return liveSession;
+  if(liveStarting){
+    if(liveOpenPromise) await liveOpenPromise;
+    return liveSession;
+  }
 
   if(!V.key){
     openSettings();
@@ -802,35 +910,67 @@ async function connectLive(){
 
   liveStarting = true;
   liveWanted = true;
+  const generation = ++liveGeneration;
+
+  liveOpenPromise = new Promise((resolve,reject)=>{
+    liveOpenResolve = resolve;
+    liveOpenReject = reject;
+  });
 
   try{
     await ensurePlaybackContext();
     await startMicrophone();
 
-    const ai = new GoogleGenAI({
-      apiKey:V.key
-    });
+    const ai = new GoogleGenAI({apiKey:V.key});
+
+    const toolDeclarations = [
+      {
+        name:'ip_lookup',
+        description:'Look up the geolocation and network information of an IPv4 address. Omit ip to locate the current client connection.',
+        parameters:{
+          type:'OBJECT',
+          properties:{ip:{type:'STRING',description:'IPv4 address. Omit for the current connection.'}}
+        }
+      },
+      {
+        name:'domain_whois',
+        description:'Look up public RDAP registration information for a domain name.',
+        parameters:{
+          type:'OBJECT',
+          properties:{domain:{type:'STRING',description:'Domain such as example.com'}},
+          required:['domain']
+        }
+      },
+      {
+        name:'email_breach_check',
+        description:'Check whether an email address appears in the XposedOrNot public breach index.',
+        parameters:{
+          type:'OBJECT',
+          properties:{email:{type:'STRING',description:'Email address to check'}},
+          required:['email']
+        }
+      },
+      {
+        name:'username_sweep',
+        description:'Check a username on GitHub and provide direct links for other major platforms.',
+        parameters:{
+          type:'OBJECT',
+          properties:{username:{type:'STRING',description:'Username without the @ sign'}},
+          required:['username']
+        }
+      }
+    ];
 
     const config = {
       responseModalities:[Modality.AUDIO],
-
-      systemInstruction:{
-        parts:[{
-          text:LIVE_SYSTEM
-        }]
-      },
-
+      systemInstruction:{parts:[{text:LIVE_SYSTEM + `
+You have access to VORTEX's live lookup tools. Use them when the user asks to trace an IP, check an email for breaches, look up a domain/WHOIS/RDAP information, or sweep a username. Do not pretend you performed a lookup without calling the appropriate tool. After a tool result arrives, briefly explain the result naturally.`}]},
       inputAudioTranscription:{},
       outputAudioTranscription:{},
-
-      thinkingConfig:{
-        thinkingLevel:'minimal'
-      },
-
-      contextWindowCompression:{
-        slidingWindow:{}
-      },
-
+      thinkingConfig:{thinkingLevel:'minimal'},
+      contextWindowCompression:{slidingWindow:{}},
+      sessionResumption:{handle:liveResumeHandle || undefined},
+      tools:[{functionDeclarations:toolDeclarations}],
       realtimeInputConfig:{
         automaticActivityDetection:{
           disabled:false,
@@ -840,41 +980,48 @@ async function connectLive(){
       }
     };
 
-    liveSession = await ai.live.connect({
+    const session = await ai.live.connect({
       model:LIVE_MODEL,
-
       callbacks:{
         onopen:()=>{
+          if(generation !== liveGeneration || !liveWanted){
+            try{ session.close(); }catch(e){}
+            return;
+          }
+          liveOpenResolve?.();
           setAssistantMode('listening');
           setStatus('LIVE — LISTENING');
-          document.getElementById('michint').textContent =
-            'LIVE VOICE ACTIVE';
+          document.getElementById('michint').textContent='LIVE VOICE ACTIVE';
         },
-
         onmessage:(message)=>{
+          if(generation !== liveGeneration || !liveWanted) return;
           handleLiveMessage(message);
         },
-
         onerror:(event)=>{
           console.error('Gemini Live error:', event);
-          setStatus('LIVE ERROR — CHECK API KEY / ACCESS');
+          const err = event instanceof Error ? event : new Error(event?.message || 'Gemini Live connection error');
+          liveOpenReject?.(err);
+          if(generation === liveGeneration){
+            setStatus('LIVE ERROR — CHECK API KEY / ACCESS');
+          }
         },
-
         onclose:(event)=>{
-          console.warn(
-            'Gemini Live closed:',
-            event?.reason || event
-          );
+          console.warn('Gemini Live closed:', event?.reason || event);
+          const isCurrent = generation === liveGeneration;
+          if(!isCurrent) return;
 
-          liveSession = null;
+          if(liveSession === session) liveSession = null;
           liveStarting = false;
+          liveOpenReject?.(new Error(event?.reason || 'Live session closed'));
+          liveOpenPromise = null;
+          liveOpenResolve = null;
+          liveOpenReject = null;
 
           if(liveWanted){
             setStatus('LIVE CONNECTION CLOSED — RECONNECTING…');
             setAssistantMode('busy');
-
             setTimeout(()=>{
-              if(liveWanted){
+              if(liveWanted && generation === liveGeneration){
                 connectLive().catch(handleLiveError);
               }
             },1200);
@@ -884,16 +1031,30 @@ async function connectLive(){
           }
         }
       },
-
       config
     });
 
+    if(generation !== liveGeneration || !liveWanted){
+      try{ session.close(); }catch(e){}
+      throw new Error('Live start cancelled');
+    }
+
+    liveSession = session;
     liveStarting = false;
+
+    // Wait for the actual websocket open/setup event before sending anything.
+    await liveOpenPromise;
     return liveSession;
 
   }catch(err){
     liveStarting = false;
-    liveWanted = false;
+    if(generation === liveGeneration) liveWanted = false;
+    try{ liveOpenReject?.(err); }catch(e){}
+    liveOpenPromise = null;
+    liveOpenResolve = null;
+    liveOpenReject = null;
+    try{ liveSession?.close(); }catch(e){}
+    liveSession = null;
     stopMicrophone();
     stopPlayback();
     throw err;
@@ -909,11 +1070,12 @@ function handleLiveError(err){
   }
 
   const raw = String(err?.message || err);
-
   const msg =
-    raw.includes('401') || raw.includes('403')
+    /401|403/i.test(raw)
       ? 'Gemini rejected the API key or Live API access.'
-      : 'I could not establish the Gemini live connection. Check the API key and microphone permission.';
+      : /quota|resource exhausted|429/i.test(raw)
+        ? 'Gemini rate limit or quota reached. Try again shortly.'
+        : 'I could not establish the Gemini live connection. Check the API key and microphone permission.';
 
   addBubble('vortex', msg, 'ERROR');
   setAssistantMode('idle');
@@ -932,20 +1094,26 @@ async function startLiveVoice(){
 
 function stopLiveVoice(){
   liveWanted = false;
+  ++liveGeneration;
 
-  try{
-    liveSession?.close();
-  }catch(e){}
-
+  try{ liveSession?.close(); }catch(e){}
   liveSession = null;
   liveStarting = false;
 
+  if(liveOpenReject){
+    try{ liveOpenReject(new Error('Live voice stopped')); }catch(e){}
+  }
+  liveOpenPromise = null;
+  liveOpenResolve = null;
+  liveOpenReject = null;
+  liveResumeHandle = null;
+
+  finishInputTranscript();
+  finishLiveModelText();
   stopMicrophone();
   stopPlayback();
 
-  document.getElementById('michint').textContent =
-    'TAP TO START / STOP LIVE VOICE';
-
+  document.getElementById('michint').textContent='TAP TO START / STOP LIVE VOICE';
   setAssistantMode('idle');
   setStatus('STANDBY — TAP TO START / STOP LIVE VOICE');
 }
@@ -966,21 +1134,15 @@ async function sendLiveText(text){
   try{
     if(!liveSession){
       await connectLive();
-      await new Promise(resolve=>setTimeout(resolve,150));
     }
 
-    if(!liveSession){
-      throw new Error('Live session unavailable');
-    }
+    if(!liveSession) throw new Error('Live session unavailable');
 
-    addBubble('user', text);
+    addBubble('user', text.trim());
     setAssistantMode('busy');
     setStatus('THINKING…');
 
-    liveSession.sendRealtimeInput({
-      text:text.trim()
-    });
-
+    liveSession.sendRealtimeInput({text:text.trim()});
   }catch(err){
     handleLiveError(err);
   }
@@ -993,7 +1155,7 @@ async function sendLiveText(text){
  * robotic SpeechSynthesis voice.
  */
 function speak(text){
-  if(!text) return;
+  if(!text || liveToolRunning) return;
 
   /*
    * OSINT tools already put their result in the transcript.
@@ -1064,6 +1226,11 @@ function localIntent(text){
       intent:'username_sweep',
       target:atUser?.[1] || namedUser?.[1] || null
     };
+  }
+
+  const bareUser = t.match(/\b(?:check|find|search|sweep)\s+(?:for\s+)?@?([a-zA-Z0-9_.-]{2,30})\b/i);
+  if(bareUser && /\b(check|find|search|sweep)\b/i.test(t) && !emailMatch && !ipMatch && !domainMatch){
+    return {intent:'username_sweep', target:bareUser[1]};
   }
 
   return {
@@ -1329,7 +1496,11 @@ const GlobeFX = (function(){
   }
 
   function placeMarkers(lat,lon,countryName){
-    [countryHalo,pin,pingRing,countryLabel].forEach(m=>{ if(m) markerGroup.remove(m); });
+    [countryHalo,pin,pingRing,countryLabel].forEach(m=>{
+      if(m) markerGroup.remove(m);
+      if(m?.material?.map) m.material.map.dispose();
+      if(m?.material) m.material.dispose();
+    });
     const surfacePos = latLonToVec3(lat,lon,RADIUS);
     const outward = surfacePos.clone().normalize();
     tracedNormal = outward.clone();
@@ -1502,6 +1673,16 @@ const GlobeFX = (function(){
   document.getElementById('gv-close').addEventListener('click', ()=>{
     container.classList.remove('active');
     document.getElementById('gv-card').classList.remove('visible');
+    flight = null;
+    pendingShowCard = null;
+    controls.enabled = true;
+    controls.autoRotate = true;
+    [countryHalo,pin,pingRing,countryLabel].forEach(m=>{
+      if(m) markerGroup.remove(m);
+      if(m?.material?.map) m.material.map.dispose();
+      if(m?.material) m.material.dispose();
+    });
+    countryHalo = pin = pingRing = countryLabel = null;
     currentPos3D = null;
     setAssistantMode('idle'); setStatus('STANDBY — SAY OR TYPE A COMMAND');
   });
@@ -1509,18 +1690,21 @@ const GlobeFX = (function(){
   return { trace };
 })();
 
-async function runIPLookup(ip){
+async function runIPLookup(ip, opts={}){
   try{
     const d = await GlobeFX.trace(ip || null);
     const summary = `Trace locked. ${d.city?d.city+', ':''}${d.country||'unknown location'}, running through ${d.isp||d.org||'an unlisted provider'}.`;
     addBubble('vortex', summary, 'RESULT');
-    speak(summary);
+    if(!opts.fromLiveTool) speak(summary);
+    setAssistantMode('idle'); setStatus('STANDBY — SAY OR TYPE A COMMAND');
+    return {ip:d.ip, city:d.city, region:d.region, country:d.country, isp:d.isp, org:d.org, asn:d.asn, timezone:d.tz, postal:d.postal, latitude:d.lat, longitude:d.lon};
   }catch(err){
     const msg = "Couldn't complete that trace — the lookup service didn't return usable data.";
     addBubble('vortex', msg, 'ERROR');
-    speak(msg);
+    if(!opts.fromLiveTool) speak(msg);
+    setAssistantMode('idle'); setStatus('STANDBY — SAY OR TYPE A COMMAND');
+    throw err;
   }
-  setAssistantMode('idle'); setStatus('STANDBY — SAY OR TYPE A COMMAND');
 }
 
 /* =====================================================================
@@ -1531,6 +1715,7 @@ const rvInner = document.getElementById('rv-inner');
 const rvTitle = document.getElementById('rv-title');
 
 function openResultView(titleMain, titleSub){
+  document.getElementById('globeview').classList.remove('active');
   rvTitle.innerHTML = `${esc(titleMain)}<small>${esc(titleSub)}</small>`;
   rvInner.innerHTML = `<div id="rv-loading"><div id="rv-spinner"></div><div id="rv-loadtext" class="mono">GATHERING DATA…</div></div>`;
   rvContainer.classList.add('active');
@@ -1554,7 +1739,7 @@ function renderBlocks(target, sub, blocksHtml){
 }
 
 /* ---------- WHOIS / domain via RDAP ---------- */
-async function runWhois(domain){
+async function runWhois(domain, opts={}){
   if(!domain){
     const msg = "I need a domain name to look up — try 'whois example.com'.";
     addBubble('vortex', msg, 'ERROR'); speak(msg);
@@ -1598,16 +1783,18 @@ async function runWhois(domain){
     renderBlocks(domain, 'RDAP LOOKUP COMPLETE', blocks);
 
     const summary = `${domain} is registered through ${registrar}${events.expiration?', expiring '+events.expiration.slice(0,10):''}.`;
-    addBubble('vortex', summary, 'RESULT'); speak(summary);
+    addBubble('vortex', summary, 'RESULT'); if(!opts.fromLiveTool) speak(summary);
+    return {domain, registrar, status:statuses, created:events.registration||null, expires:events.expiration||null, nameservers};
   }catch(err){
     rvInner.innerHTML = `<div class="rv-block" style="animation-delay:0s"><div class="label mono">NO RECORD</div><div class="rv-note">${esc(err.message||'This domain has no public RDAP record, or the registry does not expose one.')}</div></div>`;
     const msg = `No public registration record found for ${domain}.`;
-    addBubble('vortex', msg, 'ERROR'); speak(msg);
+    addBubble('vortex', msg, 'ERROR'); if(!opts.fromLiveTool) speak(msg);
+    throw err;
   }
 }
 
 /* ---------- Email breach check via XposedOrNot ---------- */
-async function runBreach(email){
+async function runBreach(email, opts={}){
   if(!email){
     const msg = "I need an email address to check — try 'check jane@example.com for breaches'.";
     addBubble('vortex', msg, 'ERROR'); speak(msg);
@@ -1638,16 +1825,18 @@ async function runBreach(email){
     renderBlocks(email, 'XPOSEDORNOT SCAN COMPLETE', blocks);
 
     const summary = found ? `${email} appears in ${breaches.length} known breach${breaches.length===1?'':'es'}.` : `${email} was not found in any known breach.`;
-    addBubble('vortex', summary, 'RESULT'); speak(summary);
+    addBubble('vortex', summary, 'RESULT'); if(!opts.fromLiveTool) speak(summary);
+    return {email, found:!!found, breaches:Array.isArray(breaches)?breaches:[]};
   }catch(err){
     rvInner.innerHTML = `<div class="rv-block" style="animation-delay:0s"><div class="label mono">SCAN FAILED</div><div class="rv-note">The breach index could not be reached. Try again shortly.</div></div>`;
     const msg = 'The breach scan failed to complete.';
-    addBubble('vortex', msg, 'ERROR'); speak(msg);
+    addBubble('vortex', msg, 'ERROR'); if(!opts.fromLiveTool) speak(msg);
+    throw err;
   }
 }
 
 /* ---------- Username sweep ---------- */
-async function runUsernameSweep(username){
+async function runUsernameSweep(username, opts={}){
   if(!username){
     const msg = "I need a username to sweep — try 'check if the username shadow99 exists'.";
     addBubble('vortex', msg, 'ERROR'); speak(msg);
@@ -1656,7 +1845,7 @@ async function runUsernameSweep(username){
   }
   openResultView('IDENTITY SWEEP','USERNAME AVAILABILITY');
 
-  let githubStatus = 'unknown', githubNote = '';
+  let githubStatus = 'unknown';
   try{
     const res = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}`);
     if(res.status === 200) githubStatus = 'found';
@@ -1690,8 +1879,9 @@ async function runUsernameSweep(username){
   const summary = githubStatus==='found' ? `${username} exists on GitHub. Other platforms need a manual check via the links shown.` :
     githubStatus==='clear' ? `${username} is available on GitHub. Other platforms need a manual check.` :
     `Swept what I could reach for ${username} — see the links for the rest.`;
-  addBubble('vortex', summary, 'RESULT'); speak(summary);
+  addBubble('vortex', summary, 'RESULT'); if(!opts.fromLiveTool) speak(summary);
+  return {username, githubStatus, checkedPlatforms:otherPlatforms.map(p=>p.name)};
 }
 </script>
 </body>
-    </html>
+  </html>
