@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VORTEX // OSINT Terminal Dashboard</title>
+
+<!-- Fonts: Inter & JetBrains Mono -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<!-- Leaflet CSS & JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+<style>
+  :root {
+    --bg: #090a0f;
+    --panel-bg: rgba(15, 18, 25, 0.75);
+    --panel-border: rgba(255, 255, 255, 0.08);
+    --panel-border-bright: rgba(0, 240, 255, 0.3);
+    
+    --accent: #00f0ff;
+    --accent-dim: rgba(0, 240, 255, 0.15);
+    --accent-glow: rgba(0, 240, 255, 0.4);
+    
+    --ink-main: #f0f4f8;
+    --ink-dim: #7a889b;
+    --ink-muted: #414d5c;
+    
+    --success: #00ff88;
+    --warning: #ffb700;
+    --danger: #ff0055;
+    
+    --glass-blur: blur(12px);
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--ink-main);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    position: relative;
+    background-image: 
+      radial-gradient(circle at 50% 50%, rgba(0, 240, 255, 0.03) 0%, transparent 70%),
+      linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 100% 100%, 32px 32px, 32px 32px;
+  }
+
+  .mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* --- APP CONTAINER --- */
+  #app {
+    display: grid;
+    grid-template-rows: 48px 1fr 32px;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* --- TOPBAR --- */
+  header {
+    background: var(--panel-bg);
+    backdrop-filter: var(--glass-blur);
+    border-bottom: 1px solid var(--panel-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    z-index: 100;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--ink-main);
+  }
+
+  .brand-logo {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    box-shadow: 0 0 8px var(--accent-glow);
+    position: relative;
+  }
+
+  .brand-logo::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px; right: 3px; bottom: 3px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+    height: 100%;
+  }
+
+  .tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--ink-dim);
+    padding: 0 16px;
+    height: 100%;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+  }
+
+  .tab-btn:hover {
+    color: var(--ink-main);
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  .sys-indicators {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 11px;
+  }
+
+  .indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--ink-dim);
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ink-muted);
+  }
+
+  .dot.active {
+    background: var(--success);
+    box-shadow: 0 0 6px var(--success);
+  }
+
+  /* --- MAIN CONTENT AREA --- */
+  main {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 1px;
+    background: var(--panel-border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* --- LEFT PANEL: ASSISTANT & COMMANDS --- */
+  .left-panel {
+    background: var(--panel-bg);
+    backdrop-filter: var(--glass-blur);
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+  }
+
+  .chat-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .bubble {
+    max-width: 90%;
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    line-height: 1.4;
+    word-break: break-word;
+    user-select: text;
+  }
+
+  .bubble.system {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--panel-border);
+    color: var(--ink-main);
+  }
+
+  .bubble.user {
+    align-self: flex-end;
+    background: var(--accent-dim);
+    border: 1px solid var(--panel-border-bright);
+    color: var(--accent);
+  }
+
+  .bubble .meta {
+    font-size: 9px;
+    color: var(--ink-dim);
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+  }
+
+  .input-bar {
+    padding: 12px;
+    border-top: 1px solid var(--panel-border);
+    background: rgba(0, 0, 0, 0.2);
+    display: flex;
+    gap: 8px;
+  }
+
+  .input-bar input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    color: var(--ink-main);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .input-bar input:focus {
+    border-color: var(--accent);
+  }
+
+  .btn {
+    background: var(--accent-dim);
+    border: 1px solid var(--panel-border-bright);
+    color: var(--accent);
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn:hover {
+    background: var(--accent);
+    color: var(--bg);
+    box-shadow: 0 0 10px var(--accent-glow);
+  }
+
+  /* --- RIGHT PANEL: DISPLAY DASHBOARD --- */
+  .right-panel {
+    background: rgba(5, 7, 10, 0.85);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .viewport-header {
+    height: 36px;
+    background: rgba(0, 0, 0, 0.4);
+    border-bottom: 1px solid var(--panel-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    font-size: 11px;
+    color: var(--ink-dim);
+  }
+
+  .viewport-content {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* TABS CONTENT */
+  .tab-content {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    display: none;
+    flex-direction: column;
+  }
+
+  .tab-content.active {
+    display: flex;
+  }
+
+  /* VIEW: TERMINAL / BLOCKS */
+  #view-terminal {
+    padding: 20px;
+    overflow-y: auto;
+    gap: 16px;
+  }
+
+  .rv-block {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    position: relative;
+  }
+
+  .rv-block .label {
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+
+  .rv-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+
+  .rv-cell {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    padding: 10px;
+    border-radius: var(--radius-sm);
+  }
+
+  .rv-cell .k {
+    font-size: 9px;
+    color: var(--ink-dim);
+    margin-bottom: 4px;
+  }
+
+  .rv-cell .v {
+    font-size: 12px;
+    color: var(--ink-main);
+    font-weight: 500;
+    user-select: text;
+  }
+
+  .rv-cell .v.hit {
+    color: var(--danger);
+  }
+
+  .rv-cell .v.clear {
+    color: var(--success);
+  }
+
+  .rv-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .rv-listitem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--panel-border);
+  }
+
+  .rv-listitem a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .rv-listitem a:hover {
+    text-decoration: underline;
+  }
+
+  .status {
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .status.found {
+    background: rgba(255, 0, 85, 0.2);
+    color: var(--danger);
+    border: 1px solid var(--danger);
+  }
+
+  .status.clear {
+    background: rgba(0, 255, 136, 0.2);
+    color: var(--success);
+    border: 1px solid var(--success);
+  }
+
+  .status.unknown {
+    background: rgba(255, 183, 0, 0.2);
+    color: var(--warning);
+    border: 1px solid var(--warning);
+  }
+
+  /* VIEW: MAP */
+  #map {
+    width: 100%;
+    height: 100%;
+    background: #000;
+  }
+
+  /* Custom Leaflet Map Dark Styling */
+  .leaflet-tile {
+    filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3);
+  }
+
+  .leaflet-container {
+    background: #090a0f !important;
+  }
+
+  /* --- FOOTER / STATUS BAR --- */
+  footer {
+    background: var(--panel-bg);
+    border-top: 1px solid var(--panel-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    font-size: 10px;
+    color: var(--ink-dim);
+    z-index: 100;
+  }
+
+  .status-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .scanline {
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    position: absolute;
+    top: 0;
+    left: -100%;
+    animation: scan 4s linear infinite;
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  @keyframes scan {
+    0% { left: -100%; }
+    100% { left: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- TOPBAR -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo"></div>
+      <span class="mono">VORTEX <span style="font-size:9px; color:var(--accent); font-weight:normal;">// OSINT v2.4</span></span>
+    </div>
+
+    <div class="nav-tabs">
+      <button class="tab-btn mono active" onclick="switchTab('terminal')">TERMINAL</button>
+      <button class="tab-btn mono" onclick="switchTab('map')">MAP VIEW</button>
+    </div>
+
+    <div class="sys-indicators mono">
+      <div class="indicator"><div class="dot active"></div> VOICE LINK</div>
+      <div class="indicator"><div class="dot active"></div> PROXY MESH</div>
+    </div>
+  </header>
+
+  <!-- MAIN VIEWPORT -->
+  <main>
+    <!-- LEFT PANEL: ASSISTANT & CHAT -->
+    <div class="left-panel">
+      <div class="chat-container" id="chat-container">
+        <div class="bubble system">
+          <div class="meta mono">SYSTEM // INITIALIZED</div>
+          VORTEX OSINT Terminal ready. Enter a target IP, Domain, or Social Handle below, or click Voice to speak.
+        </div>
+      </div>
+
+      <div class="input-bar">
+        <input type="text" id="cmd-input" class="mono" placeholder="Target or Command..." onkeydown="if(event.key==='Enter') executeCommand()" />
+        <button class="btn mono" onclick="executeCommand()">RUN</button>
+        <button class="btn mono" id="mic-btn" onclick="toggleVoice()">VOICE</button>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL: RENDER BLOCKS / MAP -->
+    <div class="right-panel">
+      <div class="scanline"></div>
+      <div class="viewport-header mono">
+        <span id="vp-title">TARGET DATA // DISPLAY</span>
+        <span id="vp-status">IDLE</span>
+      </div>
+
+      <div class="viewport-content">
+        <!-- TERMINAL / DATA BLOCKS VIEW -->
+        <div id="view-terminal" class="tab-content active">
+          <div style="color:var(--ink-muted); text-align:center; margin-top:100px;" class="mono">
+            AWAITING TARGET INPUT...
+          </div>
+        </div>
+
+        <!-- MAP VIEW -->
+        <div id="view-map" class="tab-content">
+          <div id="map"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- FOOTER STATUS BAR -->
+  <footer>
+    <div class="status-text mono">
+      <span style="color:var(--accent);">STATUS:</span> <span id="sys-status">STANDBY — SAY OR TYPE A COMMAND</span>
+    </div>
+    <div class="mono" style="color:var(--ink-muted);">SECURE MESH // ENCRYPTED</div>
+  </footer>
+</div>
+
+<script>
+/* ==========================================================================
+   GLOBAL STATE & INITIALIZATION
+   ========================================================================== */
+let map = null;
+let currentMarker = null;
+let isListening = false;
+let recognition = null;
+
+// Audio synth setup
+const synth = window.speechSynthesis;
+
+window.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  initWebSpeech();
+});
+
+/* ==========================================================================
+   NAVIGATION / TABS
+   ========================================================================== */
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+  if (tabName === 'terminal') {
+    document.querySelectorAll('.tab-btn')[0].classList.add('active');
+    document.getElementById('view-terminal').classList.add('active');
+  } else if (tabName === 'map') {
+    document.querySelectorAll('.tab-btn')[1].classList.add('active');
+    document.getElementById('view-map').classList.add('active');
+    if (map) setTimeout(() => map.invalidateSize(), 200);
+  }
+}
+
+/* ==========================================================================
+   MAP INITIALIZATION (LEAFLET)
+   ========================================================================== */
+function initMap() {
+  map = L.map('map', {
+    center: [20, 0],
+    zoom: 2,
+    zoomControl: false
+  });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+}
+
+function updateMapTarget(lat, lon, label) {
+  if (!map) return;
+  
+  if (currentMarker) {
+    map.removeLayer(currentMarker);
+  }
+
+  map.setView([lat, lon], 10);
+
+  const customIcon = L.divIcon({
+    className: 'custom-map-pin',
+    html: `<div style="
+      width: 14px; height: 14px; 
+      background: var(--accent); 
+      border-radius: 50%; 
+      box-shadow: 0 0 12px var(--accent);
+      border: 2px solid #fff;"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7]
+  });
+
+  currentMarker = L.marker([lat, lon], { icon: customIcon }).addTo(map);
+  currentMarker.bindPopup(`<b style="color:#000;">${label}</b><br>Lat: ${lat}, Lon: ${lon}`).openPopup();
+}
+
+/* ==========================================================================
+   CHAT & INTERFACE RENDERING
+   ========================================================================== */
+function addBubble(sender, text, meta = '') {
+  const container = document.getElementById('chat-container');
+  const div = document.createElement('div');
+  div.className = `bubble ${sender}`;
+
+  const metaText = meta ? meta : (sender === 'user' ? 'OPERATOR' : 'VORTEX');
+  div.innerHTML = `
+    <div class="meta mono">${metaText}</div>
+    <div>${esc(text)}</div>
+  `;
+
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function renderBlocks(title, statusText, htmlContent) {
+  document.getElementById('vp-title').innerText = `TARGET DATA // ${title.toUpperCase()}`;
+  document.getElementById('vp-status').innerText = statusText;
+
+  const terminal = document.getElementById('view-terminal');
+  terminal.innerHTML = htmlContent;
+}
+
+function setStatus(text) {
+  document.getElementById('sys-status').innerText = text;
+}
+
+function setAssistantMode(mode) {
+  const vpStatus = document.getElementById('vp-status');
+  if (mode === 'thinking') {
+    vpStatus.innerText = 'PROCESSING...';
+    vpStatus.style.color = 'var(--warning)';
+  } else if (mode === 'idle') {
+    vpStatus.innerText = 'COMPLETE';
+    vpStatus.style.color = 'var(--accent)';
+  }
+}
+
+function esc(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/* ==========================================================================
+   VOICE & SPEECH SYNTHESIS
+   ========================================================================== */
+function speak(text) {
+  if (!synth) return;
+  synth.cancel(); // Stop ongoing speech
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 1.0;
+  utterance.pitch = 0.9;
+  
+  // Try to pick a crisp English voice
+  const voices = synth.getVoices();
+  const preferred = voices.find(v => v.lang.includes('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Daniel')));
+  if (preferred) utterance.voice = preferred;
+
+  synth.speak(utterance);
+}
+
+function initWebSpeech() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    console.warn("Speech Recognition API not supported in this browser.");
+    return;
+  }
+
+  recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.lang = 'en-US';
+
+  recognition.onstart = () => {
+    isListening = true;
+    document.getElementById('mic-btn').style.background = 'var(--danger)';
+    document.getElementById('mic-btn').style.color = '#fff';
+    setStatus('LISTENING FOR VOICE COMMAND...');
+  };
+
+  recognition.onend = () => {
+    isListening = false;
+    document.getElementById('mic-btn').style.background = '';
+    document.getElementById('mic-btn').style.color = '';
+    setStatus('STANDBY — SAY OR TYPE A COMMAND');
+  };
+
+  recognition.onresult = (e) => {
+    const transcript = e.results[0][0].transcript;
+    document.getElementById('cmd-input').value = transcript;
+    addBubble('user', transcript);
+    processInput(transcript);
+  };
+}
+
+function toggleVoice() {
+  if (!recognition) {
+    alert("Speech recognition is not supported on this browser/platform.");
+    return;
+  }
+  if (isListening) {
+    recognition.stop();
+  } else {
+    recognition.start();
+  }
+}
+
+/* ==========================================================================
+   COMMAND PARSER & RECON LOGIC
+   ========================================================================== */
+function executeCommand() {
+  const input = document.getElementById('cmd-input');
+  const val = input.value.trim();
+  if (!val) return;
+
+  addBubble('user', val);
+  input.value = '';
+  processInput(val);
+}
+
+function processInput(query) {
+  const clean = query.toLowerCase().trim();
+  setAssistantMode('thinking');
+  setStatus(`EXECUTING RECON: ${query}`);
+
+  // RegEx Detectors
+  const ipRegex = /\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/;
+  const domainRegex = /\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-2]{2,6}\b/i;
+
+  if (ipRegex.test(clean)) {
+    const ip = clean.match(ipRegex)[0];
+    runIPRecon(ip);
+  } else if (clean.startsWith('ip ') || clean.startsWith('trace ')) {
+    const target = clean.replace(/^(ip|trace)\s+/, '').trim();
+    runIPRecon(target);
+  } else if (clean.startsWith('handle ') || clean.startsWith('user ') || clean.startsWith('@')) {
+    const user = clean.replace(/^(handle|user|@)\s*/, '').trim();
+    runHandleRecon(user);
+  } else if (domainRegex.test(clean) && !clean.includes(' ')) {
+    runDomainRecon(clean);
+  } else {
+    // Default fallback to handle/general target search
+    runHandleRecon(clean.replace(/[^a-zA-Z0-9_-]/g, ''));
+  }
+}
+
+/* --- RECON MODULE: IP GEOLOCATION --- */
+async function runIPRecon(ip) {
+  addBubble('system', `Initiating Geolocation & Network sweep for IP: ${ip}...`);
+
+  try {
+    const res = await fetch(`https://ipapi.co/${ip}/json/`);
+    if (!res.ok) throw new Error('API Rate limit or network error');
+    const data = await res.json();
+
+    if (data.error) {
+      throw new Error(data.reason || 'Invalid IP');
+    }
+
+    const blocks = `
+      <div class="rv-block">
+        <div class="label mono">IP NETWORK IDENTIFICATION</div>
+        <div class="rv-grid">
+          <div class="rv-cell"><div class="k mono">IP ADDRESS</div><div class="v">${esc(data.ip)}</div></div>
+          <div class="rv-cell"><div class="k mono">VERSION</div><div class="v">${esc(data.version || 'IPv4')}</div></div>
+          <div class="rv-cell"><div class="k mono">ASN</div><div class="v">${esc(data.asn || 'N/A')}</div></div>
+          <div class="rv-cell"><div class="k mono">ORGANIZATION / ISP</div><div class="v">${esc(data.org || data.asn_org || 'N/A')}</div></div>
+        </div>
+      </div>
+
+      <div class="rv-block">
+        <div class="label mono">GEOGRAPHIC LOCATION</div>
+        <div class="rv-grid">
+          <div class="rv-cell"><div class="k mono">CITY / REGION</div><div class="v">${esc(data.city)}, ${esc(data.region)}</div></div>
+          <div class="rv-cell"><div class="k mono">COUNTRY</div><div class="v">${esc(data.country_name)} (${esc(data.country_code)})</div></div>
+          <div class="rv-cell"><div class="k mono">POSTAL CODE</div><div class="v">${esc(data.postal || 'N/A')}</div></div>
+          <div class="rv-cell"><div class="k mono">LATITUDE / LONGITUDE</div><div class="v">${data.latitude}, ${data.longitude}</div></div>
+          <div class="rv-cell"><div class="k mono">TIMEZONE</div><div class="v">${esc(data.timezone || 'N/A')}</div></div>
+        </div>
+      </div>
+    `;
+
+    renderBlocks(ip, 'SWEEP COMPLETE', blocks);
+
+    if (data.latitude && data.longitude) {
+      updateMapTarget(data.latitude, data.longitude, `IP: ${ip} (${data.city}, ${data.country_name})`);
+    }
+
+    const summary = `Target IP ${ip} located in ${data.city}, ${data.country_name}. ISP is ${data.org || 'Unknown'}.`;
+    addBubble('system', summary, 'RESULT');
+    speak(summary);
+
+  } catch (err) {
+    const errorHTML = `<div class="rv-block"><div class="label mono" style="color:var(--danger);">ERROR</div><div>Failed to trace IP: ${esc(err.message)}</div></div>`;
+    renderBlocks(ip, 'FAILED', errorHTML);
+    addBubble('system', `IP Recon failed for ${ip}: ${err.message}`, 'ERROR');
+  } finally {
+    setAssistantMode('idle');
+    setStatus('STANDBY — SAY OR TYPE A COMMAND');
+  }
+}
+
+/* --- RECON MODULE: DOMAIN WHOIS / DNS --- */
+async function runDomainRecon(domain) {
+  addBubble('system', `Executing DNS and Domain lookup for ${domain}...`);
+
+  try {
+    const res = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(domain)}`);
+    const data = await res.json();
+
+    let recordsHTML = '';
+    let ipToTrace = null;
+
+    if (data.Answer && data.Answer.length > 0) {
+      recordsHTML = data.Answer.map(ans => {
+        if (ans.type === 1 && !ipToTrace) ipToTrace = ans.data; // First A record
+        return `
+          <div class="rv-listitem">
+            <span class="mono">${esc(ans.name)}</span>
+            <span class="mono" style="color:var(--accent);">${esc(ans.data)}</span>
+          </div>
+        `;
+      }).join('');
+    } else {
+      recordsHTML = `<div style="color:var(--ink-dim)">No DNS records retrieved.</div>`;
+    }
+
+    const blocks = `
+      <div class="rv-block">
+        <div class="label mono">DOMAIN TARGET</div>
+        <div class="rv-grid">
+          <div class="rv-cell"><div class="k mono">DOMAIN</div><div class="v">${esc(domain)}</div></div>
+          <div class="rv-cell"><div class="k mono">DNS STATUS</div><div class="v">${data.Status === 0 ? 'NO ERROR' : 'ERROR ' + data.Status}</div></div>
+        </div>
+      </div>
+
+      <div class="rv-block">
+        <div class="label mono">RESOLVED DNS RECORDS</div>
+        <div class="rv-list">
+          ${recordsHTML}
+        </div>
+      </div>
+    `;
+
+    renderBlocks(domain, 'DNS RESOLVED', blocks);
+
+    const summary = `Domain ${domain} resolved. Found ${data.Answer ? data.Answer.length : 0} DNS records.`;
+    addBubble('system', summary, 'RESULT');
+    speak(summary);
+
+    if (ipToTrace) {
+      addBubble('system', `Automatically tracing primary IP: ${ipToTrace}...`);
+      runIPRecon(ipToTrace);
+    }
+
+  } catch (err) {
+    addBubble('system', `Domain resolution failed for ${domain}.`, 'ERROR');
+  } finally {
+    setAssistantMode('idle');
+    setStatus('STANDBY — SAY OR TYPE A COMMAND');
+  }
+}
+
+/* --- RECON MODULE: HANDLE / USERNAME SWEEP --- */
+async function runHandleRecon(username) {
+  addBubble('system', `Initiating Social Reconnaissance for handle: @${username}...`);
+
+  // Simulated CORS-safe check on select endpoints (e.g. GitHub) & generate platform links
+  let githubStatus = 'unknown';
+  let githubNote = 'Checking...';
+
+  try {
+    const res = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}`);
+    if(res.status === 200){
+      githubStatus = 'found';
+      const user = await res.json();
+      githubNote = user.name ? `${user.name} (${user.public_repos} repos)` : `${user.public_repos} repos`;
+    } else if(res.status === 404){
+      githubStatus = 'clear';
+      githubNote = 'Available';
+    } else {
+      githubStatus = 'unknown';
+      githubNote = 'Rate limited';
+    }
+  }catch(e){
+    githubStatus = 'unknown';
+    githubNote = 'Request failed';
+  }
+
+  const platforms = [
+    { name: 'GitHub', status: githubStatus, note: githubNote, url: `https://github.com/${username}` },
+    { name: 'X / Twitter', status: 'link', note: 'Direct Profile Link', url: `https://x.com/${username}` },
+    { name: 'Instagram', status: 'link', note: 'Direct Profile Link', url: `https://instagram.com/${username}` },
+    { name: 'Reddit', status: 'link', note: 'Direct Profile Link', url: `https://reddit.com/user/${username}` },
+    { name: 'TikTok', status: 'link', note: 'Direct Profile Link', url: `https://tiktok.com/@${username}` },
+    { name: 'Twitch', status: 'link', note: 'Direct Profile Link', url: `https://twitch.tv/${username}` }
+  ];
+
+  const listItems = platforms.map(p => {
+    let statusBadge = '';
+    if (p.status === 'found') {
+      statusBadge = `<span class="status found mono">TAKEN</span>`;
+    } else if (p.status === 'clear') {
+      statusBadge = `<span class="status clear mono">FREE</span>`;
+    } else {
+      statusBadge = `<span class="status unknown mono">VERIFY</span>`;
+    }
+
+    return `
+      <div class="rv-listitem">
+        <div>
+          <a href="${esc(p.url)}" target="_blank" rel="noopener"><strong>${esc(p.name)}</strong></a>
+          <div style="font-size:10px;color:var(--ink-dim);margin-top:2px;">${esc(p.note)}</div>
+        </div>
+        <div>${statusBadge}</div>
+      </div>
+    `;
+  }).join('');
+
+  const blocks = `
+    <div class="rv-block"><div class="label mono">TARGET HANDLE</div>
+      <div class="rv-grid">
+        <div class="rv-cell"><div class="k mono">HANDLE</div><div class="v">@${esc(username)}</div></div>
+        <div class="rv-cell"><div class="k mono">GITHUB STATUS</div><div class="v ${githubStatus === 'found' ? 'hit' : githubStatus === 'clear' ? 'clear' : ''}">${githubStatus.toUpperCase()}</div></div>
+      </div>
+    </div>
+    <div class="scanline"></div>
+    <div class="rv-block"><div class="label mono">PLATFORM AUDIT</div>
+      <div class="rv-list">
+        ${listItems}
+      </div>
+    </div>
+    <div class="rv-note" style="margin-top:12px;">Direct links provided for manual verification to bypass CORS policies across social networks.</div>
+  `;
+
+  renderBlocks(`@${username}`, 'PLATFORM SWEEP COMPLETE', blocks);
+
+  let summary = '';
+  if (githubStatus === 'found') {
+    summary = `Username @${username} is taken on GitHub (${githubNote}). Profile links generated for manual sweep.`;
+  } else if (githubStatus === 'clear') {
+    summary = `Username @${username} is available on GitHub. Direct links generated for manual sweep on other networks.`;
+  } else {
+    summary = `Sweep complete for @${username}. Check the generated links to verify profile existence.`;
+  }
+
+  addBubble('system', summary, 'RESULT');
+  speak(summary);
+  setAssistantMode('idle');
+  setStatus('STANDBY — SAY OR TYPE A COMMAND');
+}
+</script>
+</body>
+</html>
