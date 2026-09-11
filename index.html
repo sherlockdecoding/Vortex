@@ -340,7 +340,7 @@ canvas#globe{position:absolute;inset:0;display:block;}
     <div class="toolrow"><span class="name">IP geolocation</span><span class="src mono">ipwho.is</span></div>
     <div class="toolrow"><span class="name">Domain / WHOIS</span><span class="src mono">rdap.org</span></div>
     <div class="toolrow"><span class="name">Email breach check</span><span class="src mono">xposedornot</span></div>
-    <div class="toolrow"><span class="name">Username sweep</span><span class="src mono">WhatsMyName API · 700+</span></div>
+    <div class="toolrow"><span class="name">Username sweep</span><span class="src mono">WhatsMyName API · 700+ · CORS fallback</span></div>
     <div class="toolrow"><span class="name">Live conversation</span><span class="src mono">Gemini 3.1 Live</span></div>
 <div class="toolrow"><span class="name">Evidence visualization</span><span class="src mono">live charts + scan stream</span></div>
   </div>
@@ -1907,12 +1907,31 @@ async function runUsernameSweep(username, opts={}){
   openResultView('IDENTITY SWEEP','700+ PLATFORM USERNAME SEARCH');
 
   const API = 'https://whatsmyname.ink/api/search';
+  // Static HTML files can be opened from file://, where the browser may block
+  // cross-origin requests. We try the API directly first, then transparently
+  // retry through a keyless CORS relay that supports POST + GET.
+  const CORS_RELAY = 'https://proxy.killcors.com?url=';
   const escAttr = v => esc(v).replace(/`/g,'&#96;');
+
+  async function apiFetch(url, init={}, timeoutMs=25000){
+    const controller = new AbortController();
+    const timer = setTimeout(()=>controller.abort(), timeoutMs);
+    try{
+      try{
+        return await fetch(url, {...init, signal:controller.signal});
+      }catch(directErr){
+        const relayUrl = CORS_RELAY + encodeURIComponent(url);
+        return await fetch(relayUrl, {...init, signal:controller.signal});
+      }
+    }finally{
+      clearTimeout(timer);
+    }
+  }
 
   // Animated live dashboard while the API works.
   rvInner.innerHTML = `
     <div id="rv-target">${esc(username)}</div>
-    <div id="rv-sub" class="mono">CROSS-PLATFORM PUBLIC PROFILE DISCOVERY</div>
+    <div id="rv-sub" class="mono">CROSS-PLATFORM PUBLIC PROFILE DISCOVERY · KEYLESS API</div>
     <div id="rv-live">
       <div class="live-pulse"></div>
       <div class="live-head">
@@ -1965,7 +1984,7 @@ async function runUsernameSweep(username, opts={}){
     setStatus('STARTING 700+ PLATFORM SWEEP…');
     addLog('Opening keyless WhatsMyName search service…','wait');
 
-    const initRes = await fetch(API,{
+    const initRes = await apiFetch(API,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({username})
@@ -1985,7 +2004,7 @@ async function runUsernameSweep(username, opts={}){
     let data = null;
     for(let attempt=0; attempt<45; attempt++){
       await new Promise(r=>setTimeout(r, attempt===0 ? 500 : 1000));
-      const res = await fetch(`${API}?id=${encodeURIComponent(queryId)}`);
+      const res = await apiFetch(`${API}?id=${encodeURIComponent(queryId)}`);
       if(!res.ok) throw new Error(`Polling failed: HTTP ${res.status}`);
       data = await res.json();
 
