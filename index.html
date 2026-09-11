@@ -792,19 +792,11 @@ async function ensurePlaybackContext(){
      * speakers. The gain makes the voice substantially louder while
      * the compressor prevents clipping/distortion.
      */
+    // Keep Gemini's native PCM untouched. Aggressive gain/compression can
+    // introduce clicks or short beeps at chunk boundaries.
     playbackMaster = playbackContext.createGain();
-    playbackMaster.gain.value = 1.65;
-
-    playbackCompressor = playbackContext.createDynamicsCompressor();
-    playbackCompressor.threshold.value = -10;
-    playbackCompressor.knee.value = 12;
-    playbackCompressor.ratio.value = 3;
-    playbackCompressor.attack.value = 0.003;
-    playbackCompressor.release.value = 0.15;
-
-    playbackMaster
-      .connect(playbackCompressor)
-      .connect(playbackContext.destination);
+    playbackMaster.gain.value = 1.0;
+    playbackMaster.connect(playbackContext.destination);
   }
 
   if(playbackContext.state === 'suspended'){
@@ -872,10 +864,14 @@ async function startMicrophone(){
 
   micSource.connect(micProcessor);
   micProcessor.connect(micGain);
+
+  // ScriptProcessorNode must be connected to a live output path or some
+  // browsers stop invoking onaudioprocess. The gain is hard-zero, so the
+  // microphone is processed but NEVER sent audibly to the speakers.
   const silentSink = audioContext.createGain();
   silentSink.gain.value = 0;
   micGain.connect(silentSink);
-  // Never route microphone audio to the speakers; it can create beeps/feedback artifacts.
+  silentSink.connect(audioContext.destination);
 }
 
 function stopMicrophone(){
@@ -1903,4 +1899,4 @@ async function runUsernameSweep(username, opts={}){
 }
 </script>
 </body>
-      </html>
+                           </html>
