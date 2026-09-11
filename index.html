@@ -32,14 +32,14 @@ button{font-family:inherit;}
 
 #stage{position:relative;width:100vw;height:100vh;height:100dvh;}
 
-/* background field */
+/* ---------------- background field ---------------- */
 #field{position:absolute;inset:0;z-index:0;}
 #vignette{position:absolute;inset:0;pointer-events:none;z-index:1;
   background:radial-gradient(ellipse at 50% 42%, transparent 30%, rgba(0,0,0,.5) 78%, rgba(0,0,0,.85) 100%);}
 #grain{position:absolute;inset:0;pointer-events:none;z-index:1;opacity:.035;mix-blend-mode:overlay;
   background:repeating-linear-gradient(0deg,#fff 0px,#fff 1px,transparent 1px,transparent 3px);}
 
-/* top bar */
+/* ---------------- top bar ---------------- */
 #topbar{position:absolute;top:0;left:0;right:0;z-index:30;display:flex;align-items:center;
   gap:12px;padding:16px 16px 0;}
 #brandmark{display:flex;align-items:center;gap:8px;flex-shrink:0;}
@@ -64,7 +64,7 @@ button{font-family:inherit;}
   justify-content:center;cursor:pointer;backdrop-filter:blur(10px);transition:.2s;}
 #gearbtn:hover{color:var(--ink);border-color:var(--violet);}
 
-/* hero / vortex */
+/* ---------------- hero / vortex ---------------- */
 #hero{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
   justify-content:center;z-index:5;pointer-events:none;}
 canvas#swirl{width:min(78vmin,480px);height:min(78vmin,480px);}
@@ -74,7 +74,7 @@ canvas#swirl{width:min(78vmin,480px);height:min(78vmin,480px);}
 #substate{margin-top:6px;font-size:11px;letter-spacing:.16em;color:var(--ink-dim);
   font-family:'JetBrains Mono',monospace;min-height:16px;text-align:center;}
 
-/* transcript */
+/* ---------------- transcript ---------------- */
 #transcript{position:absolute;left:0;right:0;bottom:118px;z-index:20;
   max-height:46vh;overflow-y:auto;padding:0 18px;display:flex;flex-direction:column;
   gap:10px;scrollbar-width:none;}
@@ -91,7 +91,7 @@ canvas#swirl{width:min(78vmin,480px);height:min(78vmin,480px);}
 .bubble.vortex .tag{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;
   color:var(--cyan);margin-bottom:5px;display:block;}
 
-/* mic */
+/* ---------------- mic ---------------- */
 #micwrap{position:absolute;left:50%;bottom:30px;transform:translateX(-50%);z-index:25;
   display:flex;flex-direction:column;align-items:center;gap:8px;}
 #michint{font-size:10px;letter-spacing:.1em;color:var(--ink-dim);font-family:'JetBrains Mono',monospace;}
@@ -107,12 +107,7 @@ canvas#swirl{width:min(78vmin,480px);height:min(78vmin,480px);}
 #micbtn.listening #micring{animation:ringPulse 1.4s ease-out infinite;}
 @keyframes ringPulse{0%{opacity:.6;transform:scale(.9);}100%{opacity:0;transform:scale(1.5);}}
 
-#continuousToggle{position:absolute;bottom:30px;right:20px;font-size:11px;color:var(--ink-dim);
-  cursor:pointer;padding:6px 10px;border:1px solid var(--line);border-radius:8px;transition:.2s;}
-#continuousToggle:hover{border-color:var(--cyan);color:var(--cyan);}
-#continuousToggle.active{border-color:var(--violet);color:var(--violet);}
-
-/* settings panel */
+/* ---------------- settings panel ---------------- */
 #scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;opacity:0;pointer-events:none;
   transition:opacity .3s;}
 #scrim.visible{opacity:1;pointer-events:auto;}
@@ -131,6 +126,10 @@ canvas#swirl{width:min(78vmin,480px);height:min(78vmin,480px);}
 #keyinput:focus{border-color:var(--violet);}
 #togglevis{background:none;border:1px solid var(--line);border-radius:8px;color:var(--ink-dim);
   width:38px;cursor:pointer;flex-shrink:0;}
+#getkeylink{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--cyan);
+  text-decoration:none;margin-bottom:18px;}
+#getkeylink:hover{text-decoration:underline;}
+#keyactions{display:flex;gap:8px;margin-bottom:24px;}
 .btn{flex:1;border-radius:9px;padding:10px 12px;font-size:12px;letter-spacing:.03em;
   cursor:pointer;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);
   transition:.2s;text-align:center;}
@@ -140,226 +139,239 @@ canvas#swirl{width:min(78vmin,480px);height:min(78vmin,480px);}
 #keystatus{font-size:11px;font-family:'JetBrains Mono',monospace;margin-bottom:22px;min-height:14px;}
 #keystatus.ok{color:var(--cyan);}
 #keystatus.err{color:var(--danger);}
+.divider{height:1px;background:var(--line);margin:20px 0;}
+.toollist{display:flex;flex-direction:column;gap:9px;}
+.toolrow{display:flex;justify-content:space-between;align-items:center;font-size:12px;
+  padding:9px 11px;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;}
+.toolrow .name{color:var(--ink);}
+.toolrow .src{color:var(--ink-dim);font-family:'JetBrains Mono',monospace;font-size:9.5px;}
+
+/* ---------------- globe view ---------------- */
+#globeview{position:fixed;inset:0;z-index:70;background:var(--bg);display:none;}
+#globeview.active{display:block;}
+canvas#globe{position:absolute;inset:0;display:block;}
+#gv-header{position:absolute;top:0;left:0;right:0;z-index:5;display:flex;
+  justify-content:space-between;align-items:flex-start;padding:18px 20px;pointer-events:none;}
+#gv-title{font-size:13px;font-weight:600;letter-spacing:.12em;}
+#gv-title small{display:block;font-size:8px;letter-spacing:.16em;color:var(--ink-dim);
+  font-family:'JetBrains Mono',monospace;margin-top:2px;font-weight:400;}
+#gv-close{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);
+  background:rgba(16,16,23,.7);color:var(--ink-dim);font-size:16px;display:flex;
+  align-items:center;justify-content:center;cursor:pointer;pointer-events:auto;}
+#gv-close:hover{color:var(--ink);border-color:var(--danger);}
+#gv-status{position:absolute;top:70px;left:50%;transform:translateX(-50%);z-index:5;
+  font-size:10px;letter-spacing:.12em;color:var(--amber);font-family:'JetBrains Mono',monospace;}
+#gv-card{position:fixed;left:0;right:0;bottom:0;z-index:8;max-width:520px;margin:0 auto;
+  background:rgba(10,10,15,.94);border-top:1px solid var(--line);border-radius:16px 16px 0 0;
+  padding:16px 20px calc(16px + env(safe-area-inset-bottom,0px));transform:translateY(100%);
+  transition:transform .5s cubic-bezier(.2,.8,.25,1);}
+#gv-card.visible{transform:translateY(0);}
+#gv-card dl{display:grid;grid-template-columns:1fr 1fr;gap:7px 18px;margin:12px 0 0;
+  padding-top:10px;border-top:1px solid var(--line);}
+#gv-card .field{display:flex;justify-content:space-between;gap:8px;}
+#gv-card dt{font-size:9px;color:var(--ink-dim);letter-spacing:.08em;font-family:'JetBrains Mono',monospace;}
+#gv-card dd{font-size:11px;margin:0;text-align:right;}
+#gv-headrow{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+#gv-headrow .loc{font-size:16px;font-weight:600;}
+#gv-headrow .ip{margin-left:auto;font-size:12px;color:var(--amber);font-family:'JetBrains Mono',monospace;}
+
+/* ---------------- generic result view ---------------- */
+#resultview{position:fixed;inset:0;z-index:70;background:var(--bg);display:none;overflow-y:auto;}
+#resultview.active{display:block;}
+#rv-bg{position:fixed;inset:0;z-index:0;opacity:.5;}
+#rv-inner{position:relative;z-index:2;max-width:560px;margin:0 auto;padding:70px 20px 60px;}
+#rv-header{position:fixed;top:0;left:0;right:0;z-index:5;display:flex;justify-content:space-between;
+  align-items:flex-start;padding:18px 20px;}
+#rv-title{font-size:13px;font-weight:600;letter-spacing:.12em;}
+#rv-title small{display:block;font-size:8px;letter-spacing:.16em;color:var(--ink-dim);
+  font-family:'JetBrains Mono',monospace;margin-top:2px;font-weight:400;}
+#rv-close{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);
+  background:rgba(16,16,23,.7);color:var(--ink-dim);font-size:16px;display:flex;
+  align-items:center;justify-content:center;cursor:pointer;}
+#rv-close:hover{color:var(--ink);border-color:var(--danger);}
+#rv-target{font-size:22px;font-weight:700;margin:8px 0 2px;word-break:break-word;}
+#rv-sub{font-size:11px;color:var(--ink-dim);font-family:'JetBrains Mono',monospace;margin-bottom:26px;}
+.scanline{height:1px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+  margin:22px 0;opacity:0;animation:scanIn .6s ease forwards;}
+.rv-block{opacity:0;transform:translateY(14px);animation:blockIn .5s cubic-bezier(.2,.8,.25,1) forwards;
+  margin-bottom:16px;}
+@keyframes blockIn{to{opacity:1;transform:translateY(0);}}
+@keyframes scanIn{to{opacity:.5;}}
+.rv-block .label{font-size:9.5px;letter-spacing:.14em;color:var(--cyan);font-family:'JetBrains Mono',monospace;
+  margin-bottom:8px;}
+.rv-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.rv-cell{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 13px;}
+.rv-cell .k{font-size:9px;color:var(--ink-dim);letter-spacing:.08em;font-family:'JetBrains Mono',monospace;
+  margin-bottom:4px;}
+.rv-cell .v{font-size:13px;word-break:break-word;}
+.rv-cell .v.hit{color:var(--danger);}
+.rv-cell .v.clear{color:var(--cyan);}
+.rv-list{display:flex;flex-direction:column;gap:6px;}
+.rv-listitem{display:flex;justify-content:space-between;align-items:center;background:var(--panel);
+  border:1px solid var(--line);border-radius:9px;padding:10px 13px;font-size:12.5px;}
+.rv-listitem a{color:var(--ink);text-decoration:none;}
+.rv-listitem .status{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.08em;
+  padding:3px 8px;border-radius:5px;}
+.status.found{background:rgba(255,93,108,.15);color:var(--danger);}
+.status.clear{background:rgba(47,232,208,.12);color:var(--cyan);}
+.status.unknown{background:rgba(139,137,158,.12);color:var(--ink-dim);}
+.rv-note{font-size:11px;color:var(--ink-dim);line-height:1.6;}
+#rv-loading{display:flex;flex-direction:column;align-items:center;gap:14px;padding:80px 0;}
+#rv-spinner{width:52px;height:52px;border-radius:50%;border:2px solid var(--line);
+  border-top-color:var(--cyan);animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#rv-loadtext{font-size:11px;letter-spacing:.12em;color:var(--ink-dim);font-family:'JetBrains Mono',monospace;}
+
+@media (max-width:520px){
+  #topbar{flex-wrap:wrap;}
+  #transcript{bottom:112px;}
+}
 </style>
 </head>
 <body>
+
 <div id="stage">
-  <div id="field"></div>
+  <canvas id="field"></canvas>
   <div id="vignette"></div>
   <div id="grain"></div>
-  
+
   <div id="topbar">
-    <div id="brandmark">
-      <div class="dot"></div>
-      <span>VORTEX</span>
-    </div>
+    <div id="brandmark"><span class="dot"></span><span>VORTEX</span></div>
     <form id="textform">
       <div id="textbar">
-        <input type="text" id="textin" placeholder="Ask me anything or say a command…">
-        <button type="submit" id="textsend">
-          <svg viewBox="0 0 24 24"><path d="M16.6915026,12.4744748 L3.50612381,13.2599618 C3.19218622,13.2599618 3.03521743,13.4170592 3.03521743,13.5741566 L1.15159189,20.0151496 C0.8376543,20.8006365 0.99,21.89 1.77946707,22.52 C2.40,22.99 3.50612381,23.1 4.13399899,22.8429026 L21.714504,14.0454487 C22.6563168,13.5741566 23.1272231,12.6315722 22.9702544,11.6889879 L4.13399899,1.16640504 C3.34915502,0.9 2.40734225,0.9 1.77946707,1.4467409 C0.994623095,2.0605983 0.837654326,3.0603889 1.15159189,3.84588578 L3.03521743,10.2868788 C3.03521743,10.4439762 3.34915502,10.6010735 3.50612381,10.6010735 L16.6915026,11.3865604 C16.6915026,11.3865604 17.1624089,11.3865604 17.1624089,10.9152682 L17.1624089,12.0274007 C17.1624089,12.4744748 16.6915026,12.4744748 16.6915026,12.4744748 Z"/></svg>
+        <input id="textin" type="text" placeholder="Type a command or question…" autocomplete="off">
+        <button type="submit" id="textsend" aria-label="send">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </button>
       </div>
     </form>
-    <button id="gearbtn">⚙️</button>
+    <button id="gearbtn" aria-label="settings">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+      </svg>
+    </button>
   </div>
 
   <div id="hero">
     <canvas id="swirl"></canvas>
     <div id="wordmark">VORTEX</div>
-    <div id="substate">Ready to listen</div>
+    <div id="substate" class="mono">STANDBY — SAY OR TYPE A COMMAND</div>
   </div>
 
   <div id="transcript"></div>
 
   <div id="micwrap">
-    <div id="michint">VOICE INPUT READY • TAP TO SPEAK</div>
-    <button id="micbtn">
-      <svg viewBox="0 0 24 24"><path d="M12,2C6.48,2 2,6.48 2,12C2,17.52 6.48,22 12,22C17.52,22 22,17.52 22,12C22,6.48 17.52,2 12,2M12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4M12,6C8.69,6 6,8.69 6,12C6,15.31 8.69,18 12,18C15.31,18 18,15.31 18,12C18,8.69 15.31,6 12,6Z"/></svg>
+    <div id="michint" class="mono">TAP TO START LIVE VOICE</div>
+    <button id="micbtn" aria-label="microphone">
       <div id="micring"></div>
+      <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 00-3 3v6a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v1a7 7 0 01-14 0v-1M12 18v4M8 22h8"/></svg>
     </button>
-    <div id="continuousToggle">CONTINUOUS: OFF</div>
-  </div>
-
-  <div id="scrim"></div>
-  <div id="settings">
-    <h2>GEMINI API KEY</h2>
-    <p class="sub">Get your free key from <a href="https://aistudio.google.com" target="_blank" rel="noopener" style="color:var(--cyan)">aistudio.google.com</a></p>
-    <div id="keyrow">
-      <input type="password" id="keyinput" placeholder="paste your key here">
-      <button id="togglevis">👁</button>
-    </div>
-    <div style="display:flex;gap:8px;">
-      <button id="savekey" class="btn primary">SAVE</button>
-      <button id="clearkey" class="btn">CLEAR</button>
-    </div>
-    <div id="keystatus"></div>
   </div>
 </div>
 
-<script>
-/* =====================================================
-   GLOBALS & STATE
-===================================================== */
+<!-- ============ SETTINGS PANEL ============ -->
+<div id="scrim"></div>
+<div id="settings">
+  <h2>Configuration</h2>
+  <p class="sub">Vortex uses Gemini Live for real-time native-audio conversation. Your key stays in this browser and is sent to Google's API.</p>
+
+  <label for="keyinput">GEMINI API KEY</label>
+  <div id="keyrow">
+    <input id="keyinput" type="password" placeholder="AIza…" autocomplete="off">
+    <button id="togglevis" type="button" aria-label="show key">👁</button>
+  </div>
+  <a id="getkeylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">
+    Get a free key at aistudio.google.com/apikey ↗
+  </a>
+  <div id="keyactions">
+    <button class="btn primary" id="savekey">Save key</button>
+    <button class="btn" id="clearkey">Remove</button>
+  </div>
+  <div id="keystatus" class="mono"></div>
+
+  <div class="divider"></div>
+
+  <label>ACTIVE LOOKUP SOURCES</label>
+  <div class="toollist">
+    <div class="toolrow"><span class="name">IP geolocation</span><span class="src mono">ipwho.is</span></div>
+    <div class="toolrow"><span class="name">Domain / WHOIS</span><span class="src mono">rdap.org</span></div>
+    <div class="toolrow"><span class="name">Email breach check</span><span class="src mono">xposedornot</span></div>
+    <div class="toolrow"><span class="name">Username sweep</span><span class="src mono">github + links</span></div>
+    <div class="toolrow"><span class="name">Live conversation</span><span class="src mono">Gemini 3.1 Live</span></div>
+  </div>
+</div>
+
+<!-- ============ GLOBE VIEW (IP trace) ============ -->
+<div id="globeview">
+  <canvas id="globe"></canvas>
+  <div id="vignette2" style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 55%, transparent 35%, rgba(0,0,0,.55) 78%, rgba(0,0,0,.85) 100%);"></div>
+  <div id="gv-header">
+    <div id="gv-title">IP TRACE<small>PASSIVE GEOLOCATION</small></div>
+    <button id="gv-close">&times;</button>
+  </div>
+  <div id="gv-status" class="mono"></div>
+  <div id="gv-card"></div>
+</div>
+
+<!-- ============ GENERIC RESULT VIEW (whois / breach / username) ============ -->
+<div id="resultview">
+  <canvas id="rv-bg"></canvas>
+  <div id="rv-header">
+    <div id="rv-title">— <small>—</small></div>
+    <button id="rv-close">&times;</button>
+  </div>
+  <div id="rv-inner"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script type="module">
+import { GoogleGenAI, Modality } from "https://esm.sh/@google/genai@latest";
+"use strict";
+
+/* =====================================================================
+   VORTEX — CORE STATE
+===================================================================== */
 const V = {
   key: localStorage.getItem('vortex_gemini_key') || '',
-  listening: false,
-  speaking: false,
-  processing: false,
-  continuousMode: false
+  listening:false, speaking:false,
 };
 
-function setStatus(text){
-  document.getElementById('substate').textContent = text;
-}
+function setStatus(text){ document.getElementById('substate').textContent = text; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-/* =====================================================
-   SETTINGS PANEL
-===================================================== */
-const settingsEl = document.getElementById('settings');
-const scrimEl = document.getElementById('scrim');
-const keyinput = document.getElementById('keyinput');
-keyinput.value = V.key;
-
-function openSettings(){ settingsEl.classList.add('visible'); scrimEl.classList.add('visible'); }
-function closeSettings(){ settingsEl.classList.remove('visible'); scrimEl.classList.remove('visible'); }
-document.getElementById('gearbtn').addEventListener('click', openSettings);
-scrimEl.addEventListener('click', closeSettings);
-
-document.getElementById('togglevis').addEventListener('click', ()=>{
-  keyinput.type = keyinput.type==='password' ? 'text' : 'password';
-});
-
-document.getElementById('savekey').addEventListener('click', ()=>{
-  const v = keyinput.value.trim();
-  const statusEl = document.getElementById('keystatus');
-  if(!v){ statusEl.textContent = 'ENTER A KEY FIRST'; statusEl.className='mono err'; return; }
-  V.key = v;
-  localStorage.setItem('vortex_gemini_key', v);
-  statusEl.textContent = 'KEY SAVED — VORTEX IS READY';
-  statusEl.className = 'mono ok';
-  setTimeout(closeSettings, 700);
-});
-
-document.getElementById('clearkey').addEventListener('click', ()=>{
-  V.key = '';
-  keyinput.value = '';
-  localStorage.removeItem('vortex_gemini_key');
-  const statusEl = document.getElementById('keystatus');
-  statusEl.textContent = 'KEY REMOVED';
-  statusEl.className = 'mono';
-});
-
-if(!V.key) setTimeout(openSettings, 500);
-
-/* =====================================================
-   TRANSCRIPT
-===================================================== */
-function addBubble(role, text, tag){
-  const wrap = document.getElementById('transcript');
-  const el = document.createElement('div');
-  el.className = 'bubble ' + role;
-  if(role==='user'){
-    el.innerHTML = `<div class="txt">${escapeHtml(text)}</div>`;
-  }else{
-    el.innerHTML = `<div class="txt">${tag?`<span class="tag mono">${escapeHtml(tag)}</span>`:''}${escapeHtml(text)}</div>`;
+/* =====================================================================
+   BACKGROUND FIELD — faint drifting particle plane behind everything
+===================================================================== */
+(function backgroundField(){
+  const c = document.getElementById('field');
+  const ctx = c.getContext('2d');
+  let w,h,pts=[];
+  function resize(){
+    w = c.width = innerWidth; h = c.height = innerHeight;
+    const n = Math.round((w*h)/26000);
+    pts = Array.from({length:n},()=>({
+      x:Math.random()*w, y:Math.random()*h,
+      vx:(Math.random()-.5)*.12, vy:(Math.random()-.5)*.12,
+      r:Math.random()*1.2+.3
+    }));
   }
-  wrap.appendChild(el);
-  wrap.scrollTop = wrap.scrollHeight;
-  return el;
-}
-
-function escapeHtml(text){
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-/* =====================================================
-   SPEECH: recognition + synthesis
-===================================================== */
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-let recognizer = null;
-if(SR){
-  recognizer = new SR();
-  recognizer.continuous = false;
-  recognizer.interimResults = false;
-  recognizer.lang = 'en-US';
-  recognizer.onresult = (e)=>{
-    const text = e.results[0][0].transcript;
-    document.getElementById('textin').value = text;
-    handleQuery(text);
-  };
-  recognizer.onend = ()=>{ 
-    V.listening=false; 
-    setAssistantMode('idle'); 
-    setStatus('STANDBY — SAY OR TYPE A COMMAND');
-    // Auto-restart if continuous mode is on and not processing
-    if(V.continuousMode && !V.processing && !V.speaking){
-      setTimeout(startListening, 500);
-    }
-  };
-  recognizer.onerror = ()=>{ V.listening=false; setAssistantMode('idle'); setStatus('MIC ERROR — TRY TYPING INSTEAD'); };
-}else{
-  document.getElementById('michint').textContent = 'VOICE UNSUPPORTED — TYPE INSTEAD';
-}
-
-function startListening(){
-  if(!recognizer || V.listening || V.processing || V.speaking) return;
-  try{
-    recognizer.start();
-    V.listening = true;
-    setAssistantMode('listening');
-    setStatus('LISTENING…');
-  }catch(err){ /* already started */ }
-}
-
-const micbtn = document.getElementById('micbtn');
-micbtn.addEventListener('click', ()=>{
-  if(!recognizer) return;
-  if(V.listening){ recognizer.stop(); return; }
-  startListening();
-});
-
-// Continuous mode toggle
-const continuousBtn = document.getElementById('continuousToggle');
-continuousBtn.addEventListener('click', ()=>{
-  V.continuousMode = !V.continuousMode;
-  continuousBtn.classList.toggle('active', V.continuousMode);
-  continuousBtn.textContent = `CONTINUOUS: ${V.continuousMode ? 'ON' : 'OFF'}`;
-  if(V.continuousMode && !V.listening && !V.processing && !V.speaking){
-    startListening();
+  function tick(){
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = 'rgba(139,107,255,0.35)';
+    pts.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0)p.x=w; if(p.x>w)p.x=0; if(p.y<0)p.y=h; if(p.y>h)p.y=0;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+    });
+    requestAnimationFrame(tick);
   }
-});
+  addEventListener('resize',resize); resize(); tick();
+})();
 
-function speak(text){
-  if(!('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.rate = 1.0;
-  u.pitch = 1.0;
-  u.volume = 1.0;
-  // Try to use a natural voice
-  const voices = window.speechSynthesis.getVoices();
-  if(voices.length > 0){
-    u.voice = voices[0]; // Use first available voice
-  }
-  u.onstart = ()=>{ V.speaking=true; setAssistantMode('speaking'); };
-  u.onend = ()=>{ 
-    V.speaking=false; 
-    setAssistantMode('idle'); 
-    setStatus('STANDBY — SAY OR TYPE A COMMAND');
-    // Auto-restart if continuous mode is on
-    if(V.continuousMode && !V.processing){
-      setTimeout(startListening, 300);
-    }
-  };
-  window.speechSynthesis.speak(u);
-}
-
-/* =====================================================
-   VORTEX SWIRL HERO
-===================================================== */
+/* =====================================================================
+   VORTEX SWIRL HERO — canvas spiral, reacts to listening/speaking/busy
+===================================================================== */
 const SwirlFX = (function(){
   const c = document.getElementById('swirl');
   const ctx = c.getContext('2d');
@@ -402,6 +414,7 @@ const SwirlFX = (function(){
     const col = colorFor(mode);
     const energyR = size*0.42;
 
+    // core ring
     ctx.beginPath();
     ctx.arc(cx,cy, energyR*0.34 + Math.sin(t*0.05)*4, 0, Math.PI*2);
     ctx.strokeStyle = `rgba(${col},0.5)`;
@@ -421,6 +434,7 @@ const SwirlFX = (function(){
       ctx.fill();
     });
 
+    // sweeping arc
     ctx.beginPath();
     ctx.arc(cx,cy,energyR*0.7, t*0.01, t*0.01+1.4);
     ctx.strokeStyle = `rgba(${col},0.25)`;
@@ -438,141 +452,1220 @@ function setAssistantMode(mode){
   document.getElementById('micbtn').classList.toggle('speaking', mode==='speaking' || mode==='busy');
 }
 
-/* =====================================================
-   GEMINI API (FIXED v2)
-===================================================== */
-async function callGemini(prompt, systemInstruction){
-  if(!V.key) throw new Error('NO_KEY');
-  
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(V.key)}`;
-  
-  const body = {
-    systemInstruction: systemInstruction ? {parts:[{text: systemInstruction}]} : undefined,
-    contents:[{
-      role: 'user',
-      parts:[{text: prompt}]
-    }]
+/* =====================================================================
+   TRANSCRIPT
+===================================================================== */
+function addBubble(role, text, tag){
+  const wrap = document.getElementById('transcript');
+  const el = document.createElement('div');
+  el.className = 'bubble ' + role;
+  if(role==='user'){
+    el.innerHTML = `<div class="txt">${esc(text)}</div>`;
+  }else{
+    el.innerHTML = `<div class="txt">${tag?`<span class="tag mono">${esc(tag)}</span>`:''}${esc(text)}</div>`;
+  }
+  wrap.appendChild(el);
+  wrap.scrollTop = wrap.scrollHeight;
+  return el;
+}
+
+/* =====================================================================
+   GEMINI LIVE VOICE — persistent native-audio conversation
+   ===================================================================== */
+
+const LIVE_MODEL = 'gemini-3.1-flash-live-preview';
+
+const LIVE_SYSTEM = `
+You are VORTEX, a sharp, calm, highly capable digital detective assistant.
+Speak naturally and conversationally. Be concise unless the user asks for detail.
+You are talking directly to the user by voice, so do not use markdown, bullet symbols,
+or awkward written formatting in spoken replies.
+For OSINT requests, help with lawful, ethical research and clearly distinguish facts,
+inferences, and uncertainty.
+`;
+
+let liveSession = null;
+let mediaStream = null;
+let audioContext = null;
+let micSource = null;
+let micProcessor = null;
+let micGain = null;
+let liveStarting = false;
+let liveWanted = false;
+
+let playbackContext = null;
+let playbackNextTime = 0;
+let activeSources = new Set();
+let modelSpeaking = false;
+
+let currentModelBubble = null;
+let currentModelText = '';
+
+function base64ToBytes(b64){
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function bytesToBase64(bytes){
+  let binary = '';
+  const chunk = 0x8000;
+  for(let i=0;i<bytes.length;i+=chunk){
+    binary += String.fromCharCode(...bytes.subarray(i, Math.min(i+chunk, bytes.length)));
+  }
+  return btoa(binary);
+}
+
+function downsampleFloat32ToPCM16(input, inputRate, outputRate){
+  const ratio = inputRate / outputRate;
+  const newLength = Math.max(1, Math.round(input.length / ratio));
+  const out = new Int16Array(newLength);
+
+  for(let i=0;i<newLength;i++){
+    const start = Math.floor(i * ratio);
+    const end = Math.min(Math.floor((i+1) * ratio), input.length);
+    let sum = 0, count = 0;
+
+    for(let j=start;j<end;j++){
+      sum += input[j];
+      count++;
+    }
+
+    const s = Math.max(-1, Math.min(1, count ? sum/count : 0));
+    out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+
+  return out;
+}
+
+function pcm16ToAudioBuffer(bytes, sampleRate){
+  if(!playbackContext) return null;
+
+  const usable = bytes.byteLength - (bytes.byteLength % 2);
+  if(!usable) return null;
+
+  const pcm = new Int16Array(
+    bytes.buffer,
+    bytes.byteOffset,
+    usable / 2
+  );
+
+  const buffer = playbackContext.createBuffer(1, pcm.length, sampleRate);
+  const channel = buffer.getChannelData(0);
+
+  for(let i=0;i<pcm.length;i++){
+    channel[i] = pcm[i] / 32768;
+  }
+
+  return buffer;
+}
+
+function stopPlayback(){
+  for(const source of activeSources){
+    try{ source.stop(0); }catch(e){}
+  }
+
+  activeSources.clear();
+  playbackNextTime = playbackContext ? playbackContext.currentTime : 0;
+  modelSpeaking = false;
+}
+
+function playPCMChunk(b64){
+  if(!playbackContext) return;
+
+  const buffer = pcm16ToAudioBuffer(base64ToBytes(b64), 24000);
+  if(!buffer) return;
+
+  const now = playbackContext.currentTime;
+  playbackNextTime = Math.max(playbackNextTime, now + 0.015);
+
+  const source = playbackContext.createBufferSource();
+  source.buffer = buffer;
+  source.connect(playbackContext.destination);
+  activeSources.add(source);
+
+  source.onended = ()=>{
+    activeSources.delete(source);
+
+    if(activeSources.size === 0 && liveSession){
+      modelSpeaking = false;
+      setAssistantMode('listening');
+      setStatus('LIVE — LISTENING');
+    }
   };
-  
-  // Remove undefined fields
-  if(!systemInstruction) delete body.systemInstruction;
-  
-  console.log('Sending to Gemini:', JSON.stringify(body, null, 2));
-  
+
+  source.start(playbackNextTime);
+  playbackNextTime += buffer.duration;
+
+  modelSpeaking = true;
+  setAssistantMode('speaking');
+  setStatus('VORTEX SPEAKING…');
+}
+
+function addLiveModelText(text){
+  if(!text) return;
+
+  currentModelText += text;
+
+  if(!currentModelBubble){
+    currentModelBubble = addBubble('vortex', '', 'VORTEX');
+  }
+
+  const txt = currentModelBubble.querySelector('.txt');
+  if(txt){
+    txt.innerHTML =
+      `<span class="tag mono">VORTEX</span>${esc(currentModelText)}`;
+  }
+
+  const transcript = document.getElementById('transcript');
+  transcript.scrollTop = transcript.scrollHeight;
+}
+
+function finishLiveModelText(){
+  currentModelBubble = null;
+  currentModelText = '';
+}
+
+function handleLiveMessage(message){
+  const content = message?.serverContent;
+
+  if(content?.interrupted){
+    stopPlayback();
+    finishLiveModelText();
+    setAssistantMode('listening');
+    setStatus('LIVE — LISTENING');
+    return;
+  }
+
+  if(content?.inputTranscription?.text){
+    const text = content.inputTranscription.text.trim();
+
+    if(text){
+      addBubble('user', text);
+    }
+  }
+
+  if(content?.outputTranscription?.text){
+    addLiveModelText(content.outputTranscription.text);
+  }
+
+  if(content?.modelTurn?.parts){
+    for(const part of content.modelTurn.parts){
+      if(part?.inlineData?.data){
+        playPCMChunk(part.inlineData.data);
+      }
+
+      if(part?.text){
+        addLiveModelText(part.text);
+      }
+    }
+  }
+
+  if(content?.turnComplete){
+    finishLiveModelText();
+
+    if(!modelSpeaking){
+      setAssistantMode('listening');
+      setStatus('LIVE — LISTENING');
+    }
+  }
+
+  if(message?.goAway){
+    setStatus('LIVE SESSION ENDING — RECONNECTING…');
+  }
+}
+
+async function ensurePlaybackContext(){
+  if(!playbackContext){
+    playbackContext =
+      new (window.AudioContext || window.webkitAudioContext)();
+  }
+
+  if(playbackContext.state === 'suspended'){
+    await playbackContext.resume();
+  }
+}
+
+async function startMicrophone(){
+  if(mediaStream) return;
+
+  if(!navigator.mediaDevices?.getUserMedia){
+    throw new Error('This browser does not support microphone access.');
+  }
+
+  mediaStream = await navigator.mediaDevices.getUserMedia({
+    audio:{
+      channelCount:1,
+      echoCancellation:true,
+      noiseSuppression:true,
+      autoGainControl:true
+    }
+  });
+
+  audioContext =
+    new (window.AudioContext || window.webkitAudioContext)();
+
+  await audioContext.resume();
+
+  micSource = audioContext.createMediaStreamSource(mediaStream);
+
+  /*
+   * ScriptProcessor is used intentionally here so Vortex remains a
+   * single-file app. It avoids needing a second hosted worklet file.
+   */
+  micProcessor =
+    audioContext.createScriptProcessor(4096, 1, 1);
+
+  micGain = audioContext.createGain();
+  micGain.gain.value = 0;
+
+  micProcessor.onaudioprocess = (event)=>{
+    if(!liveSession || !liveWanted) return;
+
+    const input = event.inputBuffer.getChannelData(0);
+
+    const pcm = downsampleFloat32ToPCM16(
+      input,
+      audioContext.sampleRate,
+      16000
+    );
+
+    if(!pcm.length) return;
+
+    try{
+      liveSession.sendRealtimeInput({
+        audio:{
+          data:bytesToBase64(new Uint8Array(pcm.buffer)),
+          mimeType:'audio/pcm;rate=16000'
+        }
+      });
+    }catch(err){
+      console.warn('Gemini audio send failed:', err);
+    }
+  };
+
+  micSource.connect(micProcessor);
+  micProcessor.connect(micGain);
+  micGain.connect(audioContext.destination);
+}
+
+function stopMicrophone(){
+  try{ micProcessor?.disconnect(); }catch(e){}
+  try{ micSource?.disconnect(); }catch(e){}
+  try{ micGain?.disconnect(); }catch(e){}
+
+  if(mediaStream){
+    mediaStream.getTracks().forEach(track=>track.stop());
+  }
+
+  micProcessor = null;
+  micSource = null;
+  micGain = null;
+  mediaStream = null;
+
+  if(audioContext){
+    try{ audioContext.close(); }catch(e){}
+  }
+
+  audioContext = null;
+}
+
+async function connectLive(){
+  if(liveSession || liveStarting) return liveSession;
+
+  if(!V.key){
+    openSettings();
+    throw new Error('NO_KEY');
+  }
+
+  liveStarting = true;
+  liveWanted = true;
+
   try{
-    const res = await fetch(url, { 
-      method:'POST', 
-      headers:{'Content-Type':'application/json'}, 
-      body:JSON.stringify(body) 
+    await ensurePlaybackContext();
+    await startMicrophone();
+
+    const ai = new GoogleGenAI({
+      apiKey:V.key
     });
-    
-    const text = await res.text();
-    console.log('Gemini raw response:', text);
-    
-    if(!res.ok){
-      console.error('Gemini HTTP error:', res.status, text);
-      throw new Error(`HTTP ${res.status}: ${text.slice(0, 100)}`);
-    }
-    
-    const data = JSON.parse(text);
-    
-    if(data?.error){
-      console.error('Gemini API error:', data.error);
-      throw new Error(data.error.message || 'Unknown API error');
-    }
-    
-    // Extract text from response
-    const textContent = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if(!textContent){
-      console.error('No text in response:', data);
-      throw new Error('No text content in response');
-    }
-    
-    return textContent;
+
+    const config = {
+      responseModalities:[Modality.AUDIO],
+
+      systemInstruction:{
+        parts:[{
+          text:LIVE_SYSTEM
+        }]
+      },
+
+      inputAudioTranscription:{},
+      outputAudioTranscription:{},
+
+      thinkingConfig:{
+        thinkingLevel:'minimal'
+      },
+
+      contextWindowCompression:{
+        slidingWindow:{}
+      },
+
+      realtimeInputConfig:{
+        automaticActivityDetection:{
+          disabled:false,
+          prefixPaddingMs:300,
+          silenceDurationMs:700
+        }
+      }
+    };
+
+    liveSession = await ai.live.connect({
+      model:LIVE_MODEL,
+
+      callbacks:{
+        onopen:()=>{
+          setAssistantMode('listening');
+          setStatus('LIVE — LISTENING');
+          document.getElementById('michint').textContent =
+            'LIVE VOICE ACTIVE';
+        },
+
+        onmessage:(message)=>{
+          handleLiveMessage(message);
+        },
+
+        onerror:(event)=>{
+          console.error('Gemini Live error:', event);
+          setStatus('LIVE ERROR — CHECK API KEY / ACCESS');
+        },
+
+        onclose:(event)=>{
+          console.warn(
+            'Gemini Live closed:',
+            event?.reason || event
+          );
+
+          liveSession = null;
+          liveStarting = false;
+
+          if(liveWanted){
+            setStatus('LIVE CONNECTION CLOSED — RECONNECTING…');
+            setAssistantMode('busy');
+
+            setTimeout(()=>{
+              if(liveWanted){
+                connectLive().catch(handleLiveError);
+              }
+            },1200);
+          }else{
+            setAssistantMode('idle');
+            setStatus('STANDBY — TAP TO START LIVE VOICE');
+          }
+        }
+      },
+
+      config
+    });
+
+    liveStarting = false;
+    return liveSession;
+
   }catch(err){
-    console.error('callGemini error:', err.message);
+    liveStarting = false;
+    liveWanted = false;
+    stopMicrophone();
+    stopPlayback();
     throw err;
   }
 }
 
-/* =====================================================
-   CLASSIFICATION & ROUTING (FIXED v2)
-===================================================== */
-async function classifyQuery(userText){
-  if(!V.key){
-    return {
-      reply: "I need a Gemini API key to chat — add one in settings (top right)."
-    };
-  }
-  
-  try{
-    // Simple direct query - no JSON extraction needed
-    const systemPrompt = `You are VORTEX, a sharp and confident AI assistant. Keep responses brief and natural. Respond directly to what the user says - be conversational, insightful, and helpful. Keep responses under 30 words.`;
+function handleLiveError(err){
+  console.error('Vortex Live error:', err);
 
-    const reply = await callGemini(userText, systemPrompt);
-    
-    console.log('Got reply:', reply);
-    
-    return {
-      reply: reply.trim()
-    };
+  if(err?.message === 'NO_KEY'){
+    setStatus('API KEY REQUIRED');
+    return;
+  }
+
+  const raw = String(err?.message || err);
+
+  const msg =
+    raw.includes('401') || raw.includes('403')
+      ? 'Gemini rejected the API key or Live API access.'
+      : 'I could not establish the Gemini live connection. Check the API key and microphone permission.';
+
+  addBubble('vortex', msg, 'ERROR');
+  setAssistantMode('idle');
+  setStatus('LIVE CONNECTION FAILED');
+}
+
+async function startLiveVoice(){
+  if(liveSession || liveStarting) return;
+
+  try{
+    await connectLive();
   }catch(err){
-    console.error('Classification error:', err);
-    
-    // Different errors
-    if(err.message.includes('API key')){
-      return {
-        reply: "Your API key seems invalid. Check it in settings and try again."
-      };
-    }else if(err.message.includes('PERMISSION_DENIED')){
-      return {
-        reply: "API permission denied. Check your key has the right permissions."
-      };
-    }else{
-      return {
-        reply: `Error: ${err.message.slice(0, 50)}`
-      };
-    }
+    handleLiveError(err);
   }
 }
 
-/* =====================================================
-   QUERY HANDLING
-===================================================== */
-document.getElementById('textform').addEventListener('submit', (e)=>{
+function stopLiveVoice(){
+  liveWanted = false;
+
+  try{
+    liveSession?.close();
+  }catch(e){}
+
+  liveSession = null;
+  liveStarting = false;
+
+  stopMicrophone();
+  stopPlayback();
+
+  document.getElementById('michint').textContent =
+    'TAP TO START LIVE VOICE';
+
+  setAssistantMode('idle');
+  setStatus('STANDBY — TAP TO START LIVE VOICE');
+}
+
+const micbtn = document.getElementById('micbtn');
+
+micbtn.addEventListener('click',async ()=>{
+  if(liveSession || liveStarting){
+    stopLiveVoice();
+  }else{
+    await startLiveVoice();
+  }
+});
+
+async function sendLiveText(text){
+  if(!text?.trim()) return;
+
+  try{
+    if(!liveSession){
+      await connectLive();
+      await new Promise(resolve=>setTimeout(resolve,150));
+    }
+
+    if(!liveSession){
+      throw new Error('Live session unavailable');
+    }
+
+    addBubble('user', text);
+    setAssistantMode('busy');
+    setStatus('THINKING…');
+
+    liveSession.sendRealtimeInput({
+      text:text.trim()
+    });
+
+  }catch(err){
+    handleLiveError(err);
+  }
+}
+
+/*
+ * Existing OSINT result functions call speak().
+ * In Live mode we ask Gemini to announce the result using its native voice.
+ * If Live mode is off, results remain visible without using the browser's
+ * robotic SpeechSynthesis voice.
+ */
+function speak(text){
+  if(!text) return;
+
+  if(liveSession){
+    try{
+      liveSession.sendRealtimeInput({
+        text:`Briefly tell the user: ${text}`
+      });
+    }catch(e){}
+  }
+}
+
+/* =====================================================================
+   QUERY PIPELINE
+   ===================================================================== */
+
+function localIntent(text){
+  const t = text.trim();
+
+  const ipMatch =
+    t.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/);
+
+  const emailMatch =
+    t.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+
+  const domainMatch =
+    t.match(/\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b/i);
+
+  const atUser =
+    t.match(/@([a-zA-Z0-9_]{2,30})\b/);
+
+  const namedUser =
+    t.match(/\b(?:username|handle)[:\s]+([a-zA-Z0-9_.-]{2,30})\b/i);
+
+  if(/\b(my ip|where am i|trace me)\b/i.test(t)){
+    return {
+      intent:'ip_lookup',
+      target:null
+    };
+  }
+
+  if(ipMatch || /\b(ip lookup|trace|geolocat)\b/i.test(t)){
+    return {
+      intent:'ip_lookup',
+      target:ipMatch?.[0] || null
+    };
+  }
+
+  if(emailMatch || /\b(breach|pwned|leaked)\b/i.test(t)){
+    return {
+      intent:'email_breach',
+      target:emailMatch?.[0] || null
+    };
+  }
+
+  if(/\b(whois|domain|dns)\b/i.test(t) && domainMatch){
+    return {
+      intent:'whois',
+      target:domainMatch[0]
+    };
+  }
+
+  if(/\b(username|handle)\b/i.test(t) && (atUser || namedUser)){
+    return {
+      intent:'username_sweep',
+      target:atUser?.[1] || namedUser?.[1] || null
+    };
+  }
+
+  return {
+    intent:'general',
+    target:null
+  };
+}
+
+async function handleQuery(text){
+  if(!text || !text.trim()) return;
+
+  document.getElementById('textin').value = '';
+
+  const clean = text.trim();
+  const route = localIntent(clean);
+
+  if(route.intent === 'ip_lookup'){
+    addBubble('user', clean);
+    addBubble('vortex','Locating that connection now.','IP LOOKUP');
+    setAssistantMode('busy');
+    setStatus('ACQUIRING TARGET…');
+    return runIPLookup(route.target);
+  }
+
+  if(route.intent === 'whois'){
+    addBubble('user', clean);
+    addBubble('vortex','Pulling the registration records now.','WHOIS');
+    setAssistantMode('busy');
+    setStatus('LOOKING UP DOMAIN…');
+    return runWhois(route.target);
+  }
+
+  if(route.intent === 'email_breach'){
+    addBubble('user', clean);
+    addBubble('vortex','Scanning the breach records now.','BREACH');
+    setAssistantMode('busy');
+    setStatus('SCANNING…');
+    return runBreach(route.target);
+  }
+
+  if(route.intent === 'username_sweep'){
+    addBubble('user', clean);
+    addBubble('vortex','Sweeping the reachable platforms now.','USERNAME');
+    setAssistantMode('busy');
+    setStatus('SWEEPING…');
+    return runUsernameSweep(route.target);
+  }
+
+  await sendLiveText(clean);
+}
+
+document.getElementById('textform').addEventListener('submit',(e)=>{
   e.preventDefault();
   handleQuery(document.getElementById('textin').value);
 });
 
-async function handleQuery(text){
-  if(!text || !text.trim() || V.processing) return;
-  
-  document.getElementById('textin').value = '';
-  addBubble('user', text);
-  
-  V.processing = true;
-  setAssistantMode('busy');
-  setStatus('THINKING…');
+/* =====================================================================
+   SETTINGS PANEL
+   ===================================================================== */
 
-  try{
-    const result = await classifyQuery(text);
-    const reply = result.reply || 'I understood but need a moment.';
+/* =====================================================================
+   SETTINGS PANEL
+===================================================================== */
+const settingsEl = document.getElementById('settings');
+const scrimEl = document.getElementById('scrim');
+const keyinput = document.getElementById('keyinput');
+keyinput.value = V.key;
 
-    console.log('Final reply to speak:', reply);
-    addBubble('vortex', reply);
-    speak(reply);
-    
-  }catch(err){
-    console.error('Query error:', err);
-    const msg = 'Connection error. Check your API key in settings.';
-    addBubble('vortex', msg);
-    speak(msg);
-  }finally{
-    V.processing = false;
-    setAssistantMode('idle');
-    setStatus('STANDBY — SAY OR TYPE A COMMAND');
+function openSettings(){ settingsEl.classList.add('visible'); scrimEl.classList.add('visible'); }
+function closeSettings(){ settingsEl.classList.remove('visible'); scrimEl.classList.remove('visible'); }
+document.getElementById('gearbtn').addEventListener('click', openSettings);
+scrimEl.addEventListener('click', closeSettings);
+
+document.getElementById('togglevis').addEventListener('click', ()=>{
+  keyinput.type = keyinput.type==='password' ? 'text' : 'password';
+});
+
+document.getElementById('savekey').addEventListener('click', ()=>{
+  const v = keyinput.value.trim();
+  const statusEl = document.getElementById('keystatus');
+  if(!v){ statusEl.textContent = 'ENTER A KEY FIRST'; statusEl.className='mono err'; return; }
+  V.key = v;
+  localStorage.setItem('vortex_gemini_key', v);
+  statusEl.textContent = 'KEY SAVED — VORTEX IS READY';
+  statusEl.className = 'mono ok';
+  setTimeout(closeSettings, 700);
+});
+
+document.getElementById('clearkey').addEventListener('click', ()=>{
+  V.key = '';
+  keyinput.value = '';
+  localStorage.removeItem('vortex_gemini_key');
+  const statusEl = document.getElementById('keystatus');
+  statusEl.textContent = 'KEY REMOVED';
+  statusEl.className = 'mono';
+});
+
+if(!V.key) setTimeout(openSettings, 500);
+
+/* =====================================================================
+   ================  IP GLOBE VIEW  (adapted trace engine)  ============
+===================================================================== */
+const GlobeFX = (function(){
+  const container = document.getElementById('globeview');
+  const canvas = document.getElementById('globe');
+  let ready = false, renderer, scene, camera, controls, globeGroup, markerGroup;
+  let RADIUS = 2, baseCameraZ = 6, flight=null, pendingShowCard=null, currentPos3D=null;
+  let pin=null, countryHalo=null, pingRing=null, countryLabel=null, pingStartTime=0, tracedNormal=null;
+  let isDragging=false, dragVelTheta=0, dragVelPhi=0, lastPointer={x:0,y:0,t:0};
+  const activePointers = new Map();
+  const DIVE_MS=600, HOLD_MS=100, PULLBACK_MS=850, FLIGHT_MS=DIVE_MS+HOLD_MS+PULLBACK_MS;
+  const DRAG_ROTATE_SPEED=0.006, INERTIA_DECAY=0.945, INERTIA_MIN=0.00004;
+
+  function easeInCubic(t){return t*t*t;}
+  function easeOutCubic(t){return 1-Math.pow(1-t,3);}
+  function easeInOutCubic(t){return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
+  function lerp(a,b,t){return a+(b-a)*t;}
+  function clamp01(t){return Math.max(0,Math.min(1,t));}
+
+  function latLonToVec3(lat,lon,r){
+    const phi=(90-lat)*(Math.PI/180), theta=(lon+180)*(Math.PI/180);
+    return new THREE.Vector3(-r*Math.sin(phi)*Math.cos(theta), r*Math.cos(phi), r*Math.sin(phi)*Math.sin(theta));
   }
+
+  function init(){
+    if(ready) return;
+    renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+    renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 100);
+    camera.position.set(0,0,8);
+    globeGroup = new THREE.Group(); scene.add(globeGroup);
+
+    const sphereMat = new THREE.MeshPhongMaterial({color:0x0a0810, emissive:0x140a20, shininess:4, transparent:true, opacity:0.98});
+    globeGroup.add(new THREE.Mesh(new THREE.SphereGeometry(RADIUS,64,64), sphereMat));
+
+    const loader = new THREE.TextureLoader(); loader.crossOrigin='anonymous';
+    loader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/textures/planets/earth_atmos_2048.jpg', (tex)=>{
+      const landMat = new THREE.MeshPhongMaterial({map:tex, transparent:true, opacity:0.45, blending:THREE.AdditiveBlending, depthWrite:false});
+      globeGroup.add(new THREE.Mesh(new THREE.SphereGeometry(RADIUS*1.001,64,64), landMat));
+    });
+
+    (function buildGraticule(r){
+      const group = new THREE.Group();
+      const mat = new THREE.LineBasicMaterial({color:0x3a2c5a, transparent:true, opacity:0.4});
+      const segs=72;
+      for(let lat=-60;lat<=60;lat+=30){ const pts=[]; for(let i=0;i<=segs;i++) pts.push(latLonToVec3(lat,(i/segs)*360-180,r)); group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat)); }
+      for(let lon=-180;lon<180;lon+=30){ const pts=[]; for(let i=0;i<=segs;i++) pts.push(latLonToVec3((i/segs)*180-90,lon,r)); group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat)); }
+      const eqPts=[]; for(let i=0;i<=segs;i++) eqPts.push(latLonToVec3(0,(i/segs)*360-180,r));
+      group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(eqPts), new THREE.LineBasicMaterial({color:0x6a4fd0, transparent:true, opacity:0.6})));
+      globeGroup.add(group);
+    })(RADIUS*1.006);
+
+    const glowMat = new THREE.MeshBasicMaterial({color:0x2fe8d0, transparent:true, opacity:0.14, side:THREE.BackSide});
+    globeGroup.add(new THREE.Mesh(new THREE.SphereGeometry(RADIUS*1.09,48,48), glowMat));
+
+    scene.add(new THREE.AmbientLight(0x443355,1.1));
+    const key1 = new THREE.DirectionalLight(0xffffff,0.9); key1.position.set(4,3,5); scene.add(key1);
+    const rim = new THREE.DirectionalLight(0x2fe8d0,0.35); rim.position.set(-4,-2,-3); scene.add(rim);
+
+    markerGroup = new THREE.Group(); scene.add(markerGroup);
+
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0,0,0); controls.enablePan=false; controls.enableDamping=true;
+    controls.dampingFactor=0.08; controls.zoomSpeed=0.7; controls.minDistance=RADIUS*1.35;
+    controls.maxDistance=12; controls.autoRotate=true; controls.autoRotateSpeed=3.4; controls.enableRotate=false;
+    controls.addEventListener('start', ()=>{ controls.autoRotate=false; });
+    controls.addEventListener('end', ()=>{
+      if(!isDragging && Math.abs(dragVelTheta)<=INERTIA_MIN && Math.abs(dragVelPhi)<=INERTIA_MIN) controls.autoRotate=true;
+    });
+
+    renderer.domElement.style.touchAction='none';
+    renderer.domElement.addEventListener('pointerdown', onPointerDown);
+    addEventListener('pointermove', onPointerMove);
+    addEventListener('pointerup', onPointerUp);
+    addEventListener('pointercancel', onPointerUp);
+    addEventListener('resize', resize);
+    resize();
+    animate();
+    ready = true;
+  }
+
+  function applyManualRotation(dTheta,dPhi){
+    const sph = new THREE.Spherical().setFromVector3(camera.position);
+    sph.theta -= dTheta; sph.phi = THREE.MathUtils.clamp(sph.phi-dPhi, 0.06, Math.PI-0.06);
+    camera.position.setFromSpherical(sph); camera.lookAt(0,0,0);
+  }
+  function onPointerDown(e){
+    if(flight) return;
+    activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(activePointers.size===1){ isDragging=true; controls.autoRotate=false; dragVelTheta=0; dragVelPhi=0; lastPointer={x:e.clientX,y:e.clientY,t:performance.now()}; }
+    else isDragging=false;
+  }
+  function onPointerMove(e){
+    if(!isDragging||flight||!activePointers.has(e.pointerId)||activePointers.size!==1) return;
+    const now=performance.now(), dx=e.clientX-lastPointer.x, dy=e.clientY-lastPointer.y, dt=Math.max(now-lastPointer.t,1);
+    const dTheta=dx*DRAG_ROTATE_SPEED, dPhi=dy*DRAG_ROTATE_SPEED;
+    applyManualRotation(dTheta,dPhi);
+    dragVelTheta=dTheta/dt; dragVelPhi=dPhi/dt; lastPointer={x:e.clientX,y:e.clientY,t:now};
+  }
+  function onPointerUp(e){ activePointers.delete(e.pointerId); if(activePointers.size===0) isDragging=false; }
+
+  const GLOBE_MARGIN = RADIUS*1.35;
+  function resize(){
+    if(!renderer) return;
+    const w=innerWidth, h=innerHeight;
+    renderer.setSize(w,h); camera.aspect=w/h;
+    const halfFovY = THREE.MathUtils.degToRad(camera.fov/2);
+    const distH = GLOBE_MARGIN/Math.tan(halfFovY);
+    const distW = GLOBE_MARGIN/(Math.tan(halfFovY)*camera.aspect);
+    baseCameraZ = Math.max(distH,distW,6);
+    if(!flight) camera.position.setLength(baseCameraZ);
+    if(controls) controls.maxDistance = baseCameraZ*1.8;
+    camera.updateProjectionMatrix();
+  }
+
+  function makeDotSprite(colorHex,size,opacity){
+    const c=document.createElement('canvas'); c.width=c.height=128;
+    const ctx=c.getContext('2d');
+    const grd=ctx.createRadialGradient(64,64,0,64,64,64);
+    grd.addColorStop(0,colorHex+'ff'); grd.addColorStop(0.35,colorHex+'aa'); grd.addColorStop(1,colorHex+'00');
+    ctx.fillStyle=grd; ctx.fillRect(0,0,128,128);
+    const tex=new THREE.CanvasTexture(c);
+    const mat=new THREE.SpriteMaterial({map:tex, transparent:true, depthWrite:false, opacity:opacity===undefined?1:opacity});
+    const spr=new THREE.Sprite(mat); spr.scale.set(size,size,1); return spr;
+  }
+  function makeRingSprite(colorHex){
+    const c=document.createElement('canvas'); c.width=c.height=128;
+    const ctx=c.getContext('2d'); ctx.strokeStyle=colorHex; ctx.lineWidth=6;
+    ctx.beginPath(); ctx.arc(64,64,52,0,Math.PI*2); ctx.stroke();
+    const tex=new THREE.CanvasTexture(c);
+    const mat=new THREE.SpriteMaterial({map:tex, transparent:true, depthWrite:false});
+    return new THREE.Sprite(mat);
+  }
+  function makeLabelSprite(text,colorHex,opts){
+    opts=opts||{};
+    const fontPx=opts.fontPx||38, weight=opts.weight||'700', baseHeight=opts.baseHeight||0.16, pad=16;
+    const c=document.createElement('canvas'); const ctx=c.getContext('2d');
+    ctx.font=weight+' '+fontPx+'px "JetBrains Mono", monospace';
+    const tw=ctx.measureText(text).width;
+    c.width=Math.ceil(tw+pad*2); c.height=Math.ceil(fontPx*1.6);
+    ctx.font=weight+' '+fontPx+'px "JetBrains Mono", monospace';
+    ctx.textBaseline='middle'; ctx.textAlign='left';
+    ctx.shadowColor='rgba(0,0,0,0.9)'; ctx.shadowBlur=6; ctx.fillStyle=colorHex;
+    ctx.fillText(text,pad,c.height/2);
+    const tex=new THREE.CanvasTexture(c); tex.minFilter=THREE.LinearFilter;
+    const mat=new THREE.SpriteMaterial({map:tex, transparent:true, depthWrite:false, depthTest:false});
+    const spr=new THREE.Sprite(mat);
+    const aspect=c.width/c.height;
+    spr.userData.aspect=aspect; spr.userData.baseHeight=baseHeight;
+    spr.scale.set(baseHeight*aspect, baseHeight, 1); spr.renderOrder=999;
+    return spr;
+  }
+  function makePin(){
+    const group=new THREE.Group();
+    const mat=new THREE.MeshBasicMaterial({color:0xff5d6c});
+    const headMat=new THREE.MeshBasicMaterial({color:0xffffff});
+    const stem=new THREE.Mesh(new THREE.ConeGeometry(0.028,0.15,14),mat);
+    stem.position.y=0.075; stem.rotation.x=Math.PI;
+    const head=new THREE.Mesh(new THREE.SphereGeometry(0.045,16,16),headMat);
+    head.position.y=0.15;
+    group.add(stem,head); return group;
+  }
+
+  function placeMarkers(lat,lon,countryName){
+    [countryHalo,pin,pingRing,countryLabel].forEach(m=>{ if(m) markerGroup.remove(m); });
+    const surfacePos = latLonToVec3(lat,lon,RADIUS);
+    const outward = surfacePos.clone().normalize();
+    tracedNormal = outward.clone();
+
+    countryHalo = makeDotSprite('#2fe8d0',1.7,0.55);
+    countryHalo.position.copy(surfacePos.clone().multiplyScalar(1.008));
+    markerGroup.add(countryHalo);
+
+    pingRing = makeRingSprite('#8b6bff');
+    pingRing.position.copy(surfacePos.clone().multiplyScalar(1.012));
+    pingRing.scale.set(0.3,0.3,1);
+    markerGroup.add(pingRing);
+    pingStartTime = performance.now();
+
+    pin = makePin();
+    pin.position.copy(surfacePos);
+    pin.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), outward);
+    markerGroup.add(pin);
+
+    if(countryName){
+      countryLabel = makeLabelSprite(countryName.toUpperCase(), '#c9c2ff', {fontPx:34});
+      countryLabel.position.copy(surfacePos.clone().multiplyScalar(1.02).add(outward.clone().multiplyScalar(-0.04)));
+      countryLabel.material.opacity = 0;
+      markerGroup.add(countryLabel);
+    }
+    return surfacePos.clone().multiplyScalar(1.03);
+  }
+
+  function perspectiveFactor(worldPos,min,max){
+    const d = camera.position.distanceTo(worldPos);
+    return THREE.MathUtils.clamp(d/6,min,max);
+  }
+
+  function updateZoomFX(ringScale,ringOpacity){
+    const dist = camera.position.length();
+    const zoomT = clamp01(1-(dist-controls.minDistance)/(controls.maxDistance-controls.minDistance));
+    if(pin){
+      const shrink = lerp(1.0,0.45,zoomT);
+      const persp = perspectiveFactor(pin.position,0.35,1.4);
+      const s = shrink*persp; pin.scale.set(s,s,s);
+    }
+    if(countryHalo){
+      countryHalo.material.opacity = lerp(0.55,0.16,zoomT);
+      const persp = perspectiveFactor(countryHalo.position,0.22,1.0);
+      const s = 1.7*persp; countryHalo.scale.set(s,s,1);
+    }
+    if(pingRing && ringScale!==undefined){
+      const persp = perspectiveFactor(pingRing.position,0.22,1.0);
+      const s = ringScale*persp; pingRing.scale.set(s,s,1);
+      pingRing.material.opacity = ringOpacity;
+    }
+    if(countryLabel){
+      const reveal = clamp01((zoomT-0.15)/0.5);
+      countryLabel.material.opacity = reveal*0.9;
+      const persp = perspectiveFactor(countryLabel.position,0.5,2.2);
+      const h = countryLabel.userData.baseHeight*persp;
+      countryLabel.scale.set(h*countryLabel.userData.aspect,h,1);
+    }
+  }
+
+  function animate(){
+    requestAnimationFrame(animate);
+    if(!container.classList.contains('active')) return;
+    if(flight){
+      const t = performance.now()-flight.start;
+      const rotT = Math.min(t/FLIGHT_MS,1);
+      const qStep = new THREE.Quaternion().identity().slerp(flight.rotQuat, easeInOutCubic(rotT));
+      const dir = flight.startDir.clone().applyQuaternion(qStep).normalize();
+      let radius;
+      if(t<DIVE_MS) radius = lerp(flight.startRadius, baseCameraZ*0.42, easeInCubic(t/DIVE_MS));
+      else if(t<DIVE_MS+HOLD_MS) radius = baseCameraZ*0.42;
+      else if(t<FLIGHT_MS) radius = lerp(baseCameraZ*0.42, baseCameraZ, easeOutCubic((t-DIVE_MS-HOLD_MS)/PULLBACK_MS));
+      else radius = baseCameraZ;
+      camera.position.copy(dir.multiplyScalar(radius));
+      camera.lookAt(0,0,0);
+      if(t>=FLIGHT_MS){
+        flight=null; controls.enabled=true;
+        if(pendingShowCard){ pendingShowCard(); pendingShowCard=null; controls.autoRotate=false; dragVelTheta=0; dragVelPhi=0; }
+      }
+    }
+    let ringScale, ringOpacity;
+    if(pingRing){
+      const el=((performance.now()-pingStartTime)%1600)/1600;
+      ringScale=lerp(0.3,2.0,el); ringOpacity=1-el;
+    }
+    const card = document.getElementById('gv-card');
+    if(!isDragging && !flight && !card.classList.contains('visible')){
+      if(Math.abs(dragVelTheta)>INERTIA_MIN||Math.abs(dragVelPhi)>INERTIA_MIN){
+        applyManualRotation(dragVelTheta*16, dragVelPhi*16);
+        dragVelTheta*=INERTIA_DECAY; dragVelPhi*=INERTIA_DECAY;
+      }else if(!controls.autoRotate) controls.autoRotate=true;
+    }
+    controls.update();
+    updateZoomFX(ringScale,ringOpacity);
+    renderer.render(scene,camera);
+  }
+
+  function facePoint(lat,lon){
+    controls.autoRotate=false; controls.enabled=false;
+    const startDir = camera.position.clone().normalize();
+    const endDir = latLonToVec3(lat,lon,1).normalize();
+    const rotQuat = new THREE.Quaternion().setFromUnitVectors(startDir,endDir);
+    flight = { startDir, startRadius: camera.position.length(), rotQuat, start: performance.now() };
+  }
+
+  async function fetchFromIpwho(ip){
+    const url = ip ? `https://ipwho.is/${encodeURIComponent(ip)}` : `https://ipwho.is/`;
+    const res = await fetch(url); const data = await res.json();
+    if(!data.success && data.success!==undefined) throw new Error(data.message||'lookup failed');
+    if(data.latitude==null) throw new Error('no geodata returned');
+    return { ip:data.ip, city:data.city, region:data.region, country:data.country, lat:data.latitude, lon:data.longitude,
+      isp:(data.connection||{}).isp, org:(data.connection||{}).org, asn:(data.connection||{}).asn,
+      tz:(data.timezone||{}).id, postal:data.postal, flag:(data.flag||{}).emoji };
+  }
+  async function fetchFromIpapi(ip){
+    const url = ip ? `https://ipapi.co/${encodeURIComponent(ip)}/json/` : `https://ipapi.co/json/`;
+    const res = await fetch(url); const data = await res.json();
+    if(data.error) throw new Error(data.reason||'lookup failed');
+    if(data.latitude==null) throw new Error('no geodata returned');
+    return { ip:data.ip, city:data.city, region:data.region, country:data.country_name, lat:data.latitude, lon:data.longitude,
+      isp:data.org, org:data.org, asn:data.asn, tz:data.timezone, postal:data.postal, flag:'' };
+  }
+
+  async function trace(ip){
+    init();
+    container.classList.add('active');
+    document.getElementById('gv-card').classList.remove('visible');
+    document.getElementById('gv-status').textContent = ip ? 'ACQUIRING TARGET…' : 'ACQUIRING SELF…';
+    resize();
+    try{
+      let result;
+      try{ result = await fetchFromIpwho(ip); }
+      catch(e){ result = await fetchFromIpapi(ip); }
+      renderResult(result);
+      document.getElementById('gv-status').textContent = 'TRACE COMPLETE // ORIGIN LOCKED';
+      return result;
+    }catch(err){
+      document.getElementById('gv-status').textContent = 'TRACE FAILED — ' + (err.message||'').toUpperCase();
+      throw err;
+    }
+  }
+
+  function renderResult(d){
+    const pos = placeMarkers(d.lat, d.lon, d.country);
+    currentPos3D = pos;
+    const card = document.getElementById('gv-card');
+    card.classList.remove('visible');
+    let asnLabel = '—';
+    if(d.asn!=null && d.asn!==''){ asnLabel = String(d.asn).toUpperCase().startsWith('AS') ? String(d.asn) : 'AS'+d.asn; }
+    card.innerHTML = `
+      <div id="gv-headrow">
+        ${d.flag?`<span style="font-size:20px;">${d.flag}</span>`:''}
+        <span class="loc">${esc(d.country||'UNKNOWN')}</span>
+        <span class="ip">${esc(d.ip||'')}</span>
+      </div>
+      <dl>
+        <div class="field"><dt>CITY</dt><dd>${esc(d.city||'—')}</dd></div>
+        <div class="field"><dt>REGION</dt><dd>${esc(d.region||'—')}</dd></div>
+        <div class="field"><dt>ISP</dt><dd>${esc(d.isp||'—')}</dd></div>
+        <div class="field"><dt>ORG</dt><dd>${esc(d.org||'—')}</dd></div>
+        <div class="field"><dt>ASN</dt><dd>${esc(asnLabel)}</dd></div>
+        <div class="field"><dt>TZ</dt><dd>${esc(d.tz||'—')}</dd></div>
+        <div class="field"><dt>POSTAL</dt><dd>${esc(d.postal||'—')}</dd></div>
+        <div class="field"><dt>COORDS</dt><dd>${d.lat.toFixed(2)}, ${d.lon.toFixed(2)}</dd></div>
+      </dl>`;
+    pendingShowCard = ()=> card.classList.add('visible');
+    facePoint(d.lat, d.lon);
+  }
+
+  document.getElementById('gv-close').addEventListener('click', ()=>{
+    container.classList.remove('active');
+    document.getElementById('gv-card').classList.remove('visible');
+    currentPos3D = null;
+    setAssistantMode('idle'); setStatus('STANDBY — SAY OR TYPE A COMMAND');
+  });
+
+  return { trace };
+})();
+
+async function runIPLookup(ip){
+  try{
+    const d = await GlobeFX.trace(ip || null);
+    const summary = `Trace locked. ${d.city?d.city+', ':''}${d.country||'unknown location'}, running through ${d.isp||d.org||'an unlisted provider'}.`;
+    addBubble('vortex', summary, 'RESULT');
+    speak(summary);
+  }catch(err){
+    const msg = "Couldn't complete that trace — the lookup service didn't return usable data.";
+    addBubble('vortex', msg, 'ERROR');
+    speak(msg);
+  }
+  setAssistantMode('idle'); setStatus('STANDBY — SAY OR TYPE A COMMAND');
+}
+
+/* =====================================================================
+   ================  GENERIC RESULT VIEW  ===============================
+===================================================================== */
+const rvContainer = document.getElementById('resultview');
+const rvInner = document.getElementById('rv-inner');
+const rvTitle = document.getElementById('rv-title');
+
+function openResultView(titleMain, titleSub){
+  rvTitle.innerHTML = `${esc(titleMain)}<small>${esc(titleSub)}</small>`;
+  rvInner.innerHTML = `<div id="rv-loading"><div id="rv-spinner"></div><div id="rv-loadtext" class="mono">GATHERING DATA…</div></div>`;
+  rvContainer.classList.add('active');
+}
+function closeResultView(){
+  rvContainer.classList.remove('active');
+  setAssistantMode('idle'); setStatus('STANDBY — SAY OR TYPE A COMMAND');
+}
+document.getElementById('rv-close').addEventListener('click', closeResultView);
+
+function renderBlocks(target, sub, blocksHtml){
+  rvInner.innerHTML = `
+    <div id="rv-target">${esc(target)}</div>
+    <div id="rv-sub" class="mono">${esc(sub)}</div>
+    <div class="scanline" style="animation-delay:.05s"></div>
+    ${blocksHtml}
+  `;
+  rvInner.querySelectorAll('.rv-block').forEach((el,i)=>{
+    el.style.animationDelay = (0.1 + i*0.09) + 's';
+  });
+}
+
+/* ---------- WHOIS / domain via RDAP ---------- */
+async function runWhois(domain){
+  if(!domain){
+    const msg = "I need a domain name to look up — try 'whois example.com'.";
+    addBubble('vortex', msg, 'ERROR'); speak(msg);
+    setAssistantMode('idle'); setStatus('STANDBY — SAY OR TYPE A COMMAND');
+    return;
+  }
+  openResultView('DOMAIN TRACE','RDAP REGISTRATION LOOKUP');
+  try{
+    const res = await fetch(`https://rdap.org/domain/${encodeURIComponent(domain)}`);
+    if(!res.ok) throw new Error('No RDAP record ('+res.status+')');
+    const d = await res.json();
+
+    const events = {};
+    (d.events||[]).forEach(e=>{ events[e.eventAction] = e.eventDate; });
+    const statuses = (d.status||[]).join(', ') || '—';
+    const nameservers = (d.nameservers||[]).map(n=>n.ldhName).filter(Boolean);
+    let registrar = '—';
+    (d.entities||[]).forEach(ent=>{
+      if((ent.roles||[]).includes('registrar')){
+        const vcard = ent.vcardArray && ent.vcardArray[1];
+        if(vcard){ const fn = vcard.find(f=>f[0]==='fn'); if(fn) registrar = fn[3]; }
+        if(registrar==='—' && ent.publicIds) registrar = ent.publicIds[0]?.identifier || '—';
+      }
+    });
+
+    const blocks = `
+      <div class="rv-block"><div class="label mono">REGISTRATION</div>
+        <div class="rv-grid">
+          <div class="rv-cell"><div class="k mono">REGISTRAR</div><div class="v">${esc(registrar)}</div></div>
+          <div class="rv-cell"><div class="k mono">STATUS</div><div class="v">${esc(statuses)}</div></div>
+          <div class="rv-cell"><div class="k mono">CREATED</div><div class="v">${esc((events.registration||'—').slice(0,10))}</div></div>
+          <div class="rv-cell"><div class="k mono">EXPIRES</div><div class="v">${esc((events.expiration||'—').slice(0,10))}</div></div>
+        </div>
+      </div>
+      <div class="scanline"></div>
+      <div class="rv-block"><div class="label mono">NAMESERVERS</div>
+        <div class="rv-list">
+          ${nameservers.length ? nameservers.map(ns=>`<div class="rv-listitem"><span>${esc(ns)}</span></div>`).join('') : '<div class="rv-note">No nameservers listed.</div>'}
+        </div>
+      </div>`;
+    renderBlocks(domain, 'RDAP LOOKUP COMPLETE', blocks);
+
+    const summary = `${domain} is registered through ${registrar}${events.expiration?', expiring '+events.expiration.slice(0,10):''}.`;
+    addBubble('vortex', summary, 'RESULT'); speak(summary);
+  }catch(err){
+    rvInner.innerHTML = `<div class="rv-block" style="animation-delay:0s"><div class="label mono">NO RECORD</div><div class="rv-note">${esc(err.message||'This domain has no public RDAP record, or the registry does not expose one.')}</div></div>`;
+    const msg = `No public registration record found for ${domain}.`;
+    addBubble('vortex', msg, 'ERROR'); speak(msg);
+  }
+}
+
+/* ---------- Email breach check via XposedOrNot ---------- */
+async function runBreach(email){
+  if(!email){
+    const msg = "I need an email address to check — try 'check jane@example.com for breaches'.";
+    addBubble('vortex', msg, 'ERROR'); speak(msg);
+    setAssistantMode('idle'); setStatus('STANDBY — SAY OR TYPE A COMMAND');
+    return;
+  }
+  openResultView('BREACH SCAN','EXPOSURE CHECK');
+  try{
+    const res = await fetch(`https://api.xposedornot.com/v1/check-email/${encodeURIComponent(email)}`);
+    const data = await res.json();
+    const breaches = data?.breaches?.[0] || [];
+    const found = Array.isArray(breaches) && breaches.length && breaches[0] !== 'none';
+
+    const blocks = `
+      <div class="rv-block"><div class="label mono">STATUS</div>
+        <div class="rv-grid">
+          <div class="rv-cell"><div class="k mono">RESULT</div><div class="v ${found?'hit':'clear'}">${found ? breaches.length+' BREACH(ES) FOUND' : 'NO BREACHES FOUND'}</div></div>
+          <div class="rv-cell"><div class="k mono">CHECKED</div><div class="v">${esc(email)}</div></div>
+        </div>
+      </div>
+      <div class="scanline"></div>
+      <div class="rv-block"><div class="label mono">${found?'EXPOSED IN':'NOTES'}</div>
+        <div class="rv-list">
+          ${found ? breaches.map(b=>`<div class="rv-listitem"><span>${esc(b)}</span><span class="status found mono">EXPOSED</span></div>`).join('')
+                  : '<div class="rv-note">This address did not appear in any known public breach dataset at the time of the check. That does not guarantee it is safe — always use unique passwords and enable two-factor authentication.</div>'}
+        </div>
+      </div>`;
+    renderBlocks(email, 'XPOSEDORNOT SCAN COMPLETE', blocks);
+
+    const summary = found ? `${email} appears in ${breaches.length} known breach${breaches.length===1?'':'es'}.` : `${email} was not found in any known breach.`;
+    addBubble('vortex', summary, 'RESULT'); speak(summary);
+  }catch(err){
+    rvInner.innerHTML = `<div class="rv-block" style="animation-delay:0s"><div class="label mono">SCAN FAILED</div><div class="rv-note">The breach index could not be reached. Try again shortly.</div></div>`;
+    const msg = 'The breach scan failed to complete.';
+    addBubble('vortex', msg, 'ERROR'); speak(msg);
+  }
+}
+
+/* ---------- Username sweep ---------- */
+async function runUsernameSweep(username){
+  if(!username){
+    const msg = "I need a username to sweep — try 'check if the username shadow99 exists'.";
+    addBubble('vortex', msg, 'ERROR'); speak(msg);
+    setAssistantMode('idle'); setStatus('STANDBY — SAY OR TYPE A COMMAND');
+    return;
+  }
+  openResultView('IDENTITY SWEEP','USERNAME AVAILABILITY');
+
+  let githubStatus = 'unknown', githubNote = '';
+  try{
+    const res = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}`);
+    if(res.status === 200) githubStatus = 'found';
+    else if(res.status === 404) githubStatus = 'clear';
+  }catch(e){ /* leave unknown */ }
+
+  const otherPlatforms = [
+    {name:'Reddit', url:`https://www.reddit.com/user/${encodeURIComponent(username)}`},
+    {name:'X / Twitter', url:`https://x.com/${encodeURIComponent(username)}`},
+    {name:'Instagram', url:`https://instagram.com/${encodeURIComponent(username)}`},
+    {name:'TikTok', url:`https://tiktok.com/@${encodeURIComponent(username)}`},
+  ];
+
+  const statusLabel = s => s==='found' ? '<span class="status found mono">FOUND</span>' : s==='clear' ? '<span class="status clear mono">AVAILABLE</span>' : '<span class="status unknown mono">UNVERIFIED</span>';
+
+  const blocks = `
+    <div class="rv-block"><div class="label mono">VERIFIED (LIVE API)</div>
+      <div class="rv-list">
+        <div class="rv-listitem"><a href="https://github.com/${esc(username)}" target="_blank" rel="noopener">GitHub — ${esc(username)}</a>${statusLabel(githubStatus)}</div>
+      </div>
+    </div>
+    <div class="scanline"></div>
+    <div class="rv-block"><div class="label mono">DIRECT LINKS (UNVERIFIED)</div>
+      <div class="rv-list">
+        ${otherPlatforms.map(p=>`<div class="rv-listitem"><a href="${p.url}" target="_blank" rel="noopener">${esc(p.name)}</a>${statusLabel('unknown')}</div>`).join('')}
+      </div>
+      <div class="rv-note" style="margin-top:10px;">These platforms block cross-origin checks from the browser, so existence can't be confirmed automatically — the links open the profile directly.</div>
+    </div>`;
+  renderBlocks(username, 'IDENTITY SWEEP COMPLETE', blocks);
+
+  const summary = githubStatus==='found' ? `${username} exists on GitHub. Other platforms need a manual check via the links shown.` :
+    githubStatus==='clear' ? `${username} is available on GitHub. Other platforms need a manual check.` :
+    `Swept what I could reach for ${username} — see the links for the rest.`;
+  addBubble('vortex', summary, 'RESULT'); speak(summary);
 }
 </script>
 </body>
-</html>
+      </html>
