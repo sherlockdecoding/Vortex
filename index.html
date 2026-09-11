@@ -261,7 +261,7 @@ canvas#globe{position:absolute;inset:0;display:block;}
   <div id="transcript"></div>
 
   <div id="micwrap">
-    <div id="michint" class="mono">TAP TO START LIVE VOICE</div>
+    <div id="michint" class="mono">TAP TO START / STOP LIVE VOICE</div>
     <button id="micbtn" aria-label="microphone">
       <div id="micring"></div>
       <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 00-3 3v6a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v1a7 7 0 01-14 0v-1M12 18v4M8 22h8"/></svg>
@@ -497,6 +497,8 @@ let playbackContext = null;
 let playbackNextTime = 0;
 let activeSources = new Set();
 let modelSpeaking = false;
+let playbackMaster = null;
+let playbackCompressor = null;
 
 let currentModelBubble = null;
 let currentModelText = '';
@@ -578,18 +580,17 @@ function playPCMChunk(b64){
   if(!buffer) return;
 
   const now = playbackContext.currentTime;
-  playbackNextTime = Math.max(playbackNextTime, now + 0.015);
+  playbackNextTime = Math.max(playbackNextTime, now);
 
   const source = playbackContext.createBufferSource();
   source.buffer = buffer;
-  source.connect(playbackContext.destination);
+  source.connect(playbackMaster || playbackContext.destination);
   activeSources.add(source);
 
   source.onended = ()=>{
     activeSources.delete(source);
 
-    if(activeSources.size === 0 && liveSession){
-      modelSpeaking = false;
+    if(activeSources.size === 0 && liveSession && !modelSpeaking){
       setAssistantMode('listening');
       setStatus('LIVE — LISTENING');
     }
@@ -680,6 +681,26 @@ async function ensurePlaybackContext(){
   if(!playbackContext){
     playbackContext =
       new (window.AudioContext || window.webkitAudioContext)();
+
+    /*
+     * Gemini gives us raw 24 kHz PCM. We route it through a dedicated
+     * output chain rather than sending every chunk directly to the
+     * speakers. The gain makes the voice substantially louder while
+     * the compressor prevents clipping/distortion.
+     */
+    playbackMaster = playbackContext.createGain();
+    playbackMaster.gain.value = 1.65;
+
+    playbackCompressor = playbackContext.createDynamicsCompressor();
+    playbackCompressor.threshold.value = -10;
+    playbackCompressor.knee.value = 12;
+    playbackCompressor.ratio.value = 3;
+    playbackCompressor.attack.value = 0.003;
+    playbackCompressor.release.value = 0.15;
+
+    playbackMaster
+      .connect(playbackCompressor)
+      .connect(playbackContext.destination);
   }
 
   if(playbackContext.state === 'suspended'){
@@ -859,7 +880,7 @@ async function connectLive(){
             },1200);
           }else{
             setAssistantMode('idle');
-            setStatus('STANDBY — TAP TO START LIVE VOICE');
+            setStatus('STANDBY — TAP TO START / STOP LIVE VOICE');
           }
         }
       },
@@ -923,10 +944,10 @@ function stopLiveVoice(){
   stopPlayback();
 
   document.getElementById('michint').textContent =
-    'TAP TO START LIVE VOICE';
+    'TAP TO START / STOP LIVE VOICE';
 
   setAssistantMode('idle');
-  setStatus('STANDBY — TAP TO START LIVE VOICE');
+  setStatus('STANDBY — TAP TO START / STOP LIVE VOICE');
 }
 
 const micbtn = document.getElementById('micbtn');
@@ -974,10 +995,15 @@ async function sendLiveText(text){
 function speak(text){
   if(!text) return;
 
-  if(liveSession){
+  /*
+   * OSINT tools already put their result in the transcript.
+   * Only ask Gemini to announce it when it is not currently producing
+   * audio, preventing overlapping voice turns and audible artifacts.
+   */
+  if(liveSession && !modelSpeaking){
     try{
       liveSession.sendRealtimeInput({
-        text:`Briefly tell the user: ${text}`
+        text:`Briefly announce this result to the user naturally: ${text}`
       });
     }catch(e){}
   }
@@ -1668,4 +1694,4 @@ async function runUsernameSweep(username){
 }
 </script>
 </body>
-      </html>
+    </html>
