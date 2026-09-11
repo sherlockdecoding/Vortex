@@ -872,7 +872,10 @@ async function startMicrophone(){
 
   micSource.connect(micProcessor);
   micProcessor.connect(micGain);
-  micGain.connect(audioContext.destination);
+  const silentSink = audioContext.createGain();
+  silentSink.gain.value = 0;
+  micGain.connect(silentSink);
+  // Never route microphone audio to the speakers; it can create beeps/feedback artifacts.
 }
 
 function stopMicrophone(){
@@ -1320,12 +1323,28 @@ document.getElementById('savekey').addEventListener('click', ()=>{
 });
 
 document.getElementById('clearkey').addEventListener('click', ()=>{
+  // Fully disable Live before deleting the credential.
+  liveWanted = false;
+  try{ liveSession?.close(); }catch(e){}
+  liveSession = null;
+  liveStarting = false;
+  stopMicrophone();
+  stopPlayback();
+
+  // Clear the current and legacy VORTEX storage keys.
   V.key = '';
   keyinput.value = '';
-  localStorage.removeItem('vortex_gemini_key');
+  try{
+    localStorage.removeItem('vortex_gemini_key');
+    localStorage.removeItem('vortex_api_key');
+    sessionStorage.removeItem('vortex_gemini_key');
+    sessionStorage.removeItem('vortex_api_key');
+  }catch(e){}
+
   const statusEl = document.getElementById('keystatus');
-  statusEl.textContent = 'KEY REMOVED';
-  statusEl.className = 'mono';
+  statusEl.textContent = 'KEY REMOVED — NOTHING SAVED';
+  statusEl.className = 'mono ok';
+  setStatus('API KEY REMOVED');
 });
 
 if(!V.key) setTimeout(openSettings, 500);
@@ -1884,4 +1903,4 @@ async function runUsernameSweep(username, opts={}){
 }
 </script>
 </body>
-  </html>
+      </html>
