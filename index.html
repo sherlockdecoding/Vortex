@@ -439,7 +439,7 @@ function setAssistantMode(mode){
 }
 
 /* =====================================================
-   GEMINI API (FIXED)
+   GEMINI API (FIXED v2)
 ===================================================== */
 async function callGemini(prompt, systemInstruction){
   if(!V.key) throw new Error('NO_KEY');
@@ -447,12 +447,17 @@ async function callGemini(prompt, systemInstruction){
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(V.key)}`;
   
   const body = {
-    contents:[{ role:'user', parts:[{text:prompt}] }]
+    systemInstruction: systemInstruction ? {parts:[{text: systemInstruction}]} : undefined,
+    contents:[{
+      role: 'user',
+      parts:[{text: prompt}]
+    }]
   };
   
-  if(systemInstruction){
-    body.systemInstruction = { parts:[{text:systemInstruction}] };
-  }
+  // Remove undefined fields
+  if(!systemInstruction) delete body.systemInstruction;
+  
+  console.log('Sending to Gemini:', JSON.stringify(body, null, 2));
   
   try{
     const res = await fetch(url, { 
@@ -461,75 +466,73 @@ async function callGemini(prompt, systemInstruction){
       body:JSON.stringify(body) 
     });
     
+    const text = await res.text();
+    console.log('Gemini raw response:', text);
+    
     if(!res.ok){
-      const errBody = await res.text().catch(()=> '');
-      console.error('Gemini error:', res.status, errBody);
-      throw new Error('GEMINI_HTTP_'+res.status);
+      console.error('Gemini HTTP error:', res.status, text);
+      throw new Error(`HTTP ${res.status}: ${text.slice(0, 100)}`);
     }
     
-    const data = await res.json();
-    console.log('Gemini response:', data); // DEBUG
+    const data = JSON.parse(text);
     
-    // Handle the response structure properly
-    if(data?.candidates?.[0]?.content?.parts){
-      const text = data.candidates[0].content.parts.map(p => p.text || '').join('');
-      return text;
+    if(data?.error){
+      console.error('Gemini API error:', data.error);
+      throw new Error(data.error.message || 'Unknown API error');
     }
     
-    throw new Error('Invalid response structure');
+    // Extract text from response
+    const textContent = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if(!textContent){
+      console.error('No text in response:', data);
+      throw new Error('No text content in response');
+    }
+    
+    return textContent;
   }catch(err){
-    console.error('callGemini error:', err);
+    console.error('callGemini error:', err.message);
     throw err;
   }
 }
 
 /* =====================================================
-   CLASSIFICATION & ROUTING (FIXED)
+   CLASSIFICATION & ROUTING (FIXED v2)
 ===================================================== */
 async function classifyQuery(userText){
   if(!V.key){
     return {
-      intent: 'general',
-      target: null,
-      reply: "I need a Gemini API key to chat — add one in settings (top right). But I can still help with queries if you ask clearly."
+      reply: "I need a Gemini API key to chat — add one in settings (top right)."
     };
   }
   
   try{
-    const systemPrompt = `You are VORTEX, a sharp AI assistant. Analyze the user's message and respond ONLY with valid JSON (no markdown, no explanation):
-{
-  "intent": "chat" or "general",
-  "target": null,
-  "reply": "Your response here, keep it under 25 words"
-}
+    // Simple direct query - no JSON extraction needed
+    const systemPrompt = `You are VORTEX, a sharp and confident AI assistant. Keep responses brief and natural. Respond directly to what the user says - be conversational, insightful, and helpful. Keep responses under 30 words.`;
 
-Always use intent "general" unless the user is asking for an OSINT tool lookup.`;
-
-    const raw = await callGemini(userText, systemPrompt);
-    console.log('Raw response:', raw); // DEBUG
+    const reply = await callGemini(userText, systemPrompt);
     
-    // Try to extract JSON from the response
-    let jsonStr = raw;
+    console.log('Got reply:', reply);
     
-    // Remove markdown code blocks if present
-    if(raw.includes('```json')){
-      jsonStr = raw.split('```json')[1].split('```')[0];
-    }else if(raw.includes('```')){
-      jsonStr = raw.split('```')[1].split('```')[0];
-    }
-    
-    jsonStr = jsonStr.trim();
-    const parsed = JSON.parse(jsonStr);
-    
-    return parsed;
+    return {
+      reply: reply.trim()
+    };
   }catch(err){
     console.error('Classification error:', err);
-    // Fallback: assume it's a general query
-    return {
-      intent: 'general',
-      target: null,
-      reply: "I'm having trouble processing that right now. Please try again or check your API key."
-    };
+    
+    // Different errors
+    if(err.message.includes('API key')){
+      return {
+        reply: "Your API key seems invalid. Check it in settings and try again."
+      };
+    }else if(err.message.includes('PERMISSION_DENIED')){
+      return {
+        reply: "API permission denied. Check your key has the right permissions."
+      };
+    }else{
+      return {
+        reply: `Error: ${err.message.slice(0, 50)}`
+      };
+    }
   }
 }
 
@@ -555,13 +558,14 @@ async function handleQuery(text){
     const result = await classifyQuery(text);
     const reply = result.reply || 'I understood but need a moment.';
 
-    addBubble('vortex', reply, 'RESPONSE');
+    console.log('Final reply to speak:', reply);
+    addBubble('vortex', reply);
     speak(reply);
     
   }catch(err){
     console.error('Query error:', err);
-    const msg = 'Something went wrong. Check your API key and try again.';
-    addBubble('vortex', msg, 'ERROR');
+    const msg = 'Connection error. Check your API key in settings.';
+    addBubble('vortex', msg);
     speak(msg);
   }finally{
     V.processing = false;
