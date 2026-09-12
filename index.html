@@ -652,7 +652,14 @@ function playPCMChunk(b64){
     if(!buffer) return;
 
     const now = playbackContext.currentTime;
-    playbackNextTime = Math.max(playbackNextTime, now);
+    // If we've fallen behind (a chunk arrived late), resync with a
+    // small cushion instead of resuming at zero margin — otherwise
+    // every late chunk creates a fresh gap, and repeated gaps at a
+    // fast rate are what produce the beeping/buzzing sound.
+    const JITTER_BUFFER = 0.12; // 120ms
+    if (playbackNextTime < now) {
+      playbackNextTime = now + JITTER_BUFFER;
+  }
 
     const source = playbackContext.createBufferSource();
     source.buffer = buffer;
