@@ -627,13 +627,22 @@ function pcm16ToAudioBuffer(bytes, sampleRate){
 }
 
 function stopPlayback(){
+  const now = playbackContext ? playbackContext.currentTime : 0;
   for(const source of activeSources){
-    try{ source.onended = null; source.stop(0); }catch(e){}
+    try{
+      if(source._chunkGain){
+        source._chunkGain.gain.cancelScheduledValues(now);
+        source._chunkGain.gain.setValueAtTime(source._chunkGain.gain.value, now);
+        source._chunkGain.gain.linearRampToValueAtTime(0, now + 0.015);
+      }
+      source.onended = null;
+      source.stop(now + 0.02);
+    }catch(e){}
   }
   activeSources.clear();
   playbackNextTime = playbackContext ? playbackContext.currentTime : 0;
   modelSpeaking = false;
-}
+  }
 
 function playPCMChunk(b64){
   if(!playbackContext || !b64) return;
