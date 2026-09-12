@@ -595,7 +595,6 @@ function downsampleFloat32ToPCM16(input, inputRate, outputRate){
 }
 
 function pcm16ToAudioBuffer(bytes, sampleRate){
-function pcm16ToAudioBuffer(bytes, sampleRate){
   if(!playbackContext) return null;
 
   const usable = bytes.byteLength - (bytes.byteLength % 2);
