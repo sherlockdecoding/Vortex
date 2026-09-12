@@ -1,269 +1,116 @@
-const UPSTREAM = 'https://whatsmyname.ink/api/search';
-
 export const config = {
-maxDuration: 60
+  maxDuration: 60
 };
 
-const sleep = (ms) =>
-new Promise(resolve => setTimeout(resolve, ms));
+const SITES = [
+  {
+    platform: 'GitHub',
+    url: username => `https://github.com/${encodeURIComponent(username)}`
+  },
+  {
+    platform: 'GitLab',
+    url: username => `https://gitlab.com/${encodeURIComponent(username)}`
+  },
+  {
+    platform: 'Reddit',
+    url: username => `https://www.reddit.com/user/${encodeURIComponent(username)}/`
+  },
+  {
+    platform: 'Keybase',
+    url: username => `https://keybase.io/${encodeURIComponent(username)}`
+  }
+];
 
-async function readJson(response) {
-const text = await response.text();
+async function checkSite(site, username) {
+  const url = site.url(username);
+  const start = Date.now();
 
-try {
-return text ? JSON.parse(text) : {};
-} catch {
-return { raw: text };
-}
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow',
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0'
+      }
+    });
+
+    let status = 'unknown';
+
+    if (response.status === 404) {
+      status = 'not_found';
+    } else if (response.ok) {
+      status = 'hit';
+    }
+
+    return {
+      platform: site.platform,
+      url,
+      status,
+      responseTime: Date.now() - start
+    };
+
+  } catch (error) {
+
+    return {
+      platform: site.platform,
+      url,
+      status: 'unknown',
+      responseTime: Date.now() - start
+    };
+
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export default async function handler(req, res) {
 
-// Only POST is used by Vortex
-if (req.method !== 'POST') {
-res.setHeader('Allow', 'POST');
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
 
-return res.status(405).json({  
-  error: 'Method not allowed. Use POST /api/whatsmyname.'  
-});
-
-}
-
-try {
-
-// Read request body  
-const body =  
-  typeof req.body === 'string'  
-    ? JSON.parse(req.body || '{}')  
-    : (req.body || {});  
-
-// Clean username  
-const username = String(body.username || '')  
-  .replace(/^@/, '')  
-  .trim();  
-
-if (!username) {  
-  return res.status(400).json({  
-    error: 'Username is required.'  
-  });  
-}  
-
-// ---------------------------------------  
-// STEP 1: Start WhatsMyName search  
-// ---------------------------------------  
-
-const startResponse = await fetch(UPSTREAM, {  
-  method: 'POST',  
-
-  headers: {  
-    'Content-Type': 'application/json',  
-    'Accept': 'application/json'  
-  },  
-
-  body: JSON.stringify({  
-    username: username  
-  })  
-});  
-
-const startData = await readJson(startResponse);  
-
-// TEMP DIAGNOSTIC: log everything the initial POST returns  
-console.error('START RESPONSE FULL', JSON.stringify(startData));  
-
-if (!startResponse.ok) {  
-  console.error(  
-    'START FAILED',  
-    startResponse.status,  
-    JSON.stringify(startData)  
-  );  
-
-  return res.status(502).json({  
-    error: 'WhatsMyName could not start the search.',  
-    upstreamStatus: startResponse.status,  
-    upstream: startData  
-  });  
-}  
-
-// ---------------------------------------  
-// If the initial POST already returned a  
-// completed result set, skip polling  
-// entirely and return it right away.  
-// ---------------------------------------  
-
-if (  
-  String(startData.status || '').toLowerCase() === 'completed' ||  
-  Array.isArray(startData.results)  
-) {  
-  return res.status(200).json(startData);  
-}  
-
-const queryId = startData.queryId;  
-
-if (!queryId) {  
-  console.error(  
-    'NO QUERY ID',  
-    JSON.stringify(startData)  
-  );  
-
-  return res.status(502).json({  
-    error: 'WhatsMyName did not return a query ID.',  
-    upstream: startData  
-  });  
-}  
-
-// ---------------------------------------  
-// STEP 2: Poll WhatsMyName server-side  
-// ---------------------------------------  
-
-let lastData = startData;  
-
-for (let attempt = 0; attempt < 90; attempt++) {  
-
-  // First wait 500ms, then 1 second  
-  await sleep(  
-    attempt === 0 ? 500 : 1000  
-  );  
-
-  const pollResponse = await fetch(UPSTREAM, {  
-    method: 'POST',  
-
-    headers: {  
-      'Content-Type': 'application/json',  
-      'Accept': 'application/json'  
-    },  
-
-    body: JSON.stringify({ id: queryId }),  
-
-    cache: 'no-store'  
-  });  
-
-  const pollData = await readJson(pollResponse);  
-
-  lastData = pollData;  
-
-  // ---------------------------------------  
-  // Specifically detect HTTP 405  
-  // ---------------------------------------  
-
-  if (pollResponse.status === 405) {  
-    console.error(  
-      'POLL 405',  
-      `attempt=${attempt}`,  
-      'Allow header:', pollResponse.headers.get('allow'),  
-      JSON.stringify(pollData)  
-    );  
-
-    return res.status(502).json({  
-      error:  
-        'WhatsMyName polling returned HTTP 405. The upstream API is rejecting the polling request.',  
-
-      upstreamStatus: 405,  
-
-      queryId: queryId,  
-
-      upstream: pollData  
-    });  
-  }  
-
-  // ---------------------------------------  
-  // Other HTTP errors  
-  // ---------------------------------------  
-
-  if (!pollResponse.ok) {  
-    console.error(  
-      'POLL FAILED',  
-      `attempt=${attempt}`,  
-      pollResponse.status,  
-      JSON.stringify(pollData)  
-    );  
-
-    return res.status(502).json({  
-      error: 'WhatsMyName polling failed.',  
-
-      upstreamStatus: pollResponse.status,  
-
-      queryId: queryId,  
-
-      upstream: pollData  
-    });  
-  }  
-
-  // ---------------------------------------  
-  // Search completed  
-  // ---------------------------------------  
-
-  const status =  
-    String(pollData.status || '').toLowerCase();  
-
-  if (status === 'completed') {  
-
-    return res.status(200).json(pollData);  
-  }  
-
-  // ---------------------------------------  
-  // Search failed  
-  // ---------------------------------------  
-
-  if (  
-    status === 'error' ||  
-    status === 'failed'  
-  ) {  
-    console.error(  
-      'POLL REPORTED FAILURE',  
-      `attempt=${attempt}`,  
-      JSON.stringify(pollData)  
-    );  
-
-    return res.status(502).json({  
-      error:  
-        pollData.error ||  
-        'WhatsMyName reported a failed search.',  
-
-      upstreamStatus: pollResponse.status,  
-
-      queryId: queryId,  
-
-      upstream: pollData  
-    });  
-  }  
-}  
-
-// ---------------------------------------  
-// Timeout  
-// ---------------------------------------  
-
-console.error(  
-  'POLL TIMED OUT',  
-  JSON.stringify(lastData)  
-);  
-
-return res.status(504).json({  
-
-  error:  
-    'WhatsMyName search timed out after 90 seconds.',  
-
-  queryId: queryId,  
-
-  upstream: lastData  
-});
-
-} catch (error) {
-
-console.error(  
-  'Vortex WhatsMyName proxy error:',  
-  error  
-);  
-
-return res.status(500).json({  
-
-  error:  
-    'Vortex serverless function failed.',  
-
-  details:  
-    error instanceof Error  
-      ? error.message  
-      : String(error)  
-});
-
-}
+    return res.status(405).json({
+      error: 'Method not allowed. Use POST.'
+    });
   }
+
+  try {
+
+    const body =
+      typeof req.body === 'string'
+        ? JSON.parse(req.body || '{}')
+        : (req.body || {});
+
+    const username = String(body.username || '')
+      .replace(/^@/, '')
+      .trim();
+
+    if (!username) {
+      return res.status(400).json({
+        error: 'Username is required.'
+      });
+    }
+
+    const results = await Promise.all(
+      SITES.map(site => checkSite(site, username))
+    );
+
+    return res.status(200).json({
+      username,
+      status: 'completed',
+      totalPlatforms: results.length,
+      results
+    });
+
+  } catch (error) {
+
+    console.error('Username sweep failed:', error);
+
+    return res.status(500).json({
+      error: 'Username sweep failed.'
+    });
+  }
+}
