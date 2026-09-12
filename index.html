@@ -335,12 +335,35 @@ canvas#globe{position:absolute;inset:0;display:block;}
 /* Demonstration motion layer */
 #viz-action{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;width:min(420px,70vw);padding:14px 16px;border:1px solid rgba(47,232,208,.22);border-radius:14px;background:rgba(8,8,13,.84);backdrop-filter:blur(10px);text-align:center;pointer-events:none;opacity:0;transition:.35s}
 #viz-action.show{opacity:1}.viz-action-k{font:8px 'JetBrains Mono',monospace;color:var(--cyan);letter-spacing:.13em}.viz-action-t{font-size:15px;font-weight:700;margin-top:4px}.viz-action-d{font-size:10px;color:var(--ink-dim);line-height:1.45;margin-top:4px}
-.viz-node{transition:left .7s cubic-bezier(.2,.8,.25,1),top .7s cubic-bezier(.2,.8,.25,1),transform .35s,border-color .25s,box-shadow .25s,opacity .35s}
+.viz-node{transition:opacity .25s ease,border-color .25s ease,box-shadow .25s ease}
 .viz-node.hot{animation:vizHot 1.2s ease-in-out infinite alternate}
 @keyframes vizHot{from{box-shadow:0 0 18px rgba(47,232,208,.10),inset 0 0 10px rgba(47,232,208,.02)}to{box-shadow:0 0 38px rgba(47,232,208,.28),inset 0 0 20px rgba(47,232,208,.06)}}
 .viz-link.active-link{stroke:var(--cyan);stroke-width:3;filter:drop-shadow(0 0 7px rgba(47,232,208,.35))}
 .viz-flow-dot{fill:var(--cyan);filter:drop-shadow(0 0 8px rgba(47,232,208,.8))}
 @media(max-width:520px){#viz-action{width:72vw;padding:10px 12px}.viz-action-t{font-size:12px}.viz-action-d{font-size:8.5px}}
+</style>
+
+<style id="vortex-final-mobile-fix">
+/* FINAL VISUALIZER FIX: the mobile active-state must NOT inherit the desktop -50% X transform. */
+#liveviz{overflow:hidden!important;}
+#viz-shell{box-sizing:border-box!important;max-width:calc(100vw - 24px)!important;min-width:0!important;}
+#viz-stage{box-sizing:border-box!important;min-width:0!important;width:100%!important;}
+#viz-svg{pointer-events:none!important;overflow:hidden!important;}
+.viz-node{box-sizing:border-box!important;contain:layout paint!important;will-change:opacity,box-shadow!important;}
+.viz-node .node-label,.viz-node .node-detail,.viz-node .node-type{transform:none!important;animation:none!important;}
+@media(max-width:600px){
+  #viz-shell{left:12px!important;right:12px!important;top:4vh!important;width:calc(100vw - 24px)!important;max-width:calc(100vw - 24px)!important;height:min(680px,92vh)!important;transform:none!important;}
+  #liveviz.active #viz-shell{transform:none!important;}
+  #viz-stage{left:0!important;right:0!important;width:100%!important;max-width:100%!important;}
+  .viz-node{transition:opacity .25s ease,box-shadow .25s ease,border-color .25s ease!important;}
+  .viz-node.hot{animation:vizHotMobile 1.2s ease-in-out infinite alternate!important;}
+}
+@media(max-width:380px){
+  #viz-shell{left:8px!important;right:8px!important;width:calc(100vw - 16px)!important;max-width:calc(100vw - 16px)!important;}
+}
+@keyframes vizHotMobile{from{box-shadow:0 0 14px rgba(47,232,208,.08)}to{box-shadow:0 0 28px rgba(47,232,208,.24)}}
+/* Never animate the explanation text itself. */
+#viz-title,#viz-sub,#viz-kicker,#viz-action-title,#viz-action-detail,.viz-step,.viz-step *{animation:none!important;transform:none!important;}
 </style>
 </head>
 <body>
@@ -1359,9 +1382,9 @@ const VisualFX=(()=>{
     else {const r=mobile?(verySmall?22:27):(c>8?31:27),cy=mobile?32:34;ns.forEach((n,i)=>{const a=i/c*Math.PI*2-Math.PI/2;n.x=50+Math.cos(a)*r;n.y=cy+Math.sin(a)*r*(mobile?.58:.62)});}
     return ns;
   }
-  function links(ns,ls){svg.innerHTML='';const m=new Map(ns.map(n=>[n.id,n]));arr(ls).slice(0,40).forEach((l,i)=>{const a=m.get(String(l.source)),b=m.get(String(l.target));if(!a||!b)return;const q=document.createElementNS('http://www.w3.org/2000/svg','line');q.setAttribute('x1',a.x);q.setAttribute('y1',a.y);q.setAttribute('x2',b.x);q.setAttribute('y2',b.y);q.setAttribute('class','viz-link');q.dataset.source=a.id;q.dataset.target=b.id;q.dataset.index=i;svg.appendChild(q);if(l.label){const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',(a.x+b.x)/2);t.setAttribute('y',(a.y+b.y)/2-1.5);t.setAttribute('text-anchor','middle');t.setAttribute('class','viz-link-label');t.textContent=clean(l.label);svg.appendChild(t);}});}
+  function links(ns,ls){svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('preserveAspectRatio','none');svg.innerHTML='';const m=new Map(ns.map(n=>[n.id,n]));arr(ls).slice(0,40).forEach((l,i)=>{const a=m.get(String(l.source)),b=m.get(String(l.target));if(!a||!b)return;const q=document.createElementNS('http://www.w3.org/2000/svg','line');q.setAttribute('x1',a.x);q.setAttribute('y1',a.y);q.setAttribute('x2',b.x);q.setAttribute('y2',b.y);q.setAttribute('class','viz-link');q.dataset.source=a.id;q.dataset.target=b.id;q.dataset.index=i;svg.appendChild(q);if(l.label){const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',(a.x+b.x)/2);t.setAttribute('y',(a.y+b.y)/2-1.5);t.setAttribute('text-anchor','middle');t.setAttribute('class','viz-link-label');t.textContent=clean(l.label);svg.appendChild(t);}});}
   function renderNodes(ns){stage.innerHTML='';ns.forEach((n,i)=>{const e=document.createElement('div');e.className='viz-node';e.style.left=n.x+'%';e.style.top=n.y+'%';e.style.animationDelay=Math.min(i,12)*.055+'s';e.dataset.id=n.id;e.innerHTML=`<div class="node-type">${esc(n.type)}</div><div class="node-label">${esc(n.label)}</div>${n.detail?`<div class="node-detail">${esc(n.detail)}</div>`:''}`;stage.appendChild(e);});}
-  function steps(ss,active){timeline.innerHTML='';ss.forEach((st,i)=>{const e=document.createElement('div');e.className='viz-step'+(i===active?' active':'');e.innerHTML=`<div class="n">STEP ${String(i+1).padStart(2,'0')}</div><div class="l">${esc(clean(st.label||`Stage ${i+1}`))}</div><div class="d">${esc(clean(st.detail||''))}</div>`;timeline.appendChild(e);if(i===active)requestAnimationFrame(()=>e.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}));});fill.style.width=(ss.length?(active+1)/ss.length*100:100)+'%';}
+  function steps(ss,active){timeline.innerHTML='';ss.forEach((st,i)=>{const e=document.createElement('div');e.className='viz-step'+(i===active?' active':'');e.innerHTML=`<div class="n">STEP ${String(i+1).padStart(2,'0')}</div><div class="l">${esc(clean(st.label||`Stage ${i+1}`))}</div><div class="d">${esc(clean(st.detail||''))}</div>`;timeline.appendChild(e);if(i===active)requestAnimationFrame(()=>e.scrollIntoView({behavior:'auto',block:'nearest',inline:'center'}));});fill.style.width=(ss.length?(active+1)/ss.length*100:100)+'%';}
   function animateFlow(from,to,duration,my){
     const old=svg.querySelector('.viz-flow-dot');if(old)old.remove();if(!from||!to)return;
     const dot=document.createElementNS('http://www.w3.org/2000/svg','circle');dot.setAttribute('r','1.5');dot.setAttribute('class','viz-flow-dot');svg.appendChild(dot);
