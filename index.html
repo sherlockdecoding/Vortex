@@ -595,6 +595,7 @@ function downsampleFloat32ToPCM16(input, inputRate, outputRate){
 }
 
 function pcm16ToAudioBuffer(bytes, sampleRate){
+function pcm16ToAudioBuffer(bytes, sampleRate){
   if(!playbackContext) return null;
 
   const usable = bytes.byteLength - (bytes.byteLength % 2);
@@ -613,8 +614,18 @@ function pcm16ToAudioBuffer(bytes, sampleRate){
     channel[i] = pcm[i] / 32768;
   }
 
+  // Smooth the very start and end of each chunk to eliminate the
+  // clicking/beeping caused by sample discontinuities between
+  // independently-decoded PCM chunks arriving back-to-back.
+  const fadeSamples = Math.min(48, Math.floor(pcm.length / 4));
+  for(let i=0;i<fadeSamples;i++){
+    const gain = i / fadeSamples;
+    channel[i] *= gain;
+    channel[pcm.length - 1 - i] *= gain;
+  }
+
   return buffer;
-}
+  }
 
 function stopPlayback(){
   for(const source of activeSources){
