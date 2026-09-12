@@ -908,6 +908,10 @@ async function startMicrophone(){
 
   micProcessor.onaudioprocess = (event)=>{
     if(!liveSession || !liveWanted) return;
+    // Don't send mic audio while Vortex is speaking — otherwise the
+    // phone's own speaker output leaks into the mic and Gemini
+    // mistakes it for you interrupting, causing repeated cutoffs.
+    if(modelSpeaking) return;
 
     const input = event.inputBuffer.getChannelData(0);
 
