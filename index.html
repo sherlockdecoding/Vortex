@@ -1906,13 +1906,13 @@ async function runUsernameSweep(username, opts={}){
   username = username.replace(/^@/,'').trim();
   openResultView('IDENTITY SWEEP','700+ PLATFORM USERNAME SEARCH');
 
-  // Vercel serverless proxy. The browser calls our own Vercel endpoint,
-  // which then talks to the WhatsMyName API server-side. This avoids CORS.
+  // Vortex calls its own Vercel serverless function. The function starts
+  // the WhatsMyName search and performs the polling server-side, avoiding
+  // browser/CORS/method issues during the long-running sweep.
   const API = '/api/whatsmyname';
-  const OFFICIAL_SEARCH = 'https://whatsmyname.io/search?username=';
   const escAttr = v => esc(v).replace(/`/g,'&#96;');
 
-  async function apiFetch(url, init={}, timeoutMs=30000){
+  async function apiFetch(url, init={}, timeoutMs=120000){
     const controller = new AbortController();
     const timer = setTimeout(()=>controller.abort(), timeoutMs);
     try{
@@ -2003,46 +2003,53 @@ async function runUsernameSweep(username, opts={}){
 
     if(!queryId) throw new Error('Search service did not return a query ID.');
 
+    // The Vercel function now does the entire start + poll sequence.
+    // The browser makes one POST and receives the completed result set.
+    addLog('Vercel worker is running the platform sweep server-side…','wait');
+
+    const res = await apiFetch(API,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username})
+    });
+
+    const responseText = await res.text();
     let data = null;
-    for(let attempt=0; attempt<90; attempt++){
-      await new Promise(r=>setTimeout(r, attempt===0 ? 500 : 1000));
-      const res = await apiFetch(`${API}?id=${encodeURIComponent(queryId)}`);
-      if(!res.ok) throw new Error(`Polling failed: HTTP ${res.status}`);
-      data = await res.json();
-
-      const status = String(data.status||'').toLowerCase();
-      const results = Array.isArray(data.results) ? data.results : [];
-      const progress = Math.min(96, Math.max(5,
-        results.length ? (results.length/Math.max(totalPlatforms,1))*100 : (attempt+1)*2.1
-      ));
-      fill.style.width = `${progress}%`;
-      count.textContent = `${Math.min(results.length,totalPlatforms)} / ${totalPlatforms}`;
-      animateStats(results);
-
-      // Stream newly observed results into the UI.
-      const visible = results.slice(-40);
-      if(grid && visible.length){
-        grid.innerHTML = visible.slice().reverse().map((r,i)=>{
-          const hit = String(r.status||'').toLowerCase()==='hit';
-          const platform = r.platform || 'Unknown platform';
-          const url = r.url || '#';
-          return `<div class="evidence-card ${hit?'hit':''}" style="animation-delay:${Math.min(i,12)*35}ms">
-            <div class="pname"><a href="${escAttr(url)}" target="_blank" rel="noopener">${esc(platform)}</a></div>
-            <div class="pmeta">${hit?'FOUND':'CHECKED'} · ${esc(String(r.responseTime ?? '—'))} ms</div>
-          </div>`;
-        }).join('');
-      }
-
-      if(status==='completed'){
-        fill.style.width='100%';
-        addLog(`Sweep complete: ${results.length} platform results returned.`);
-        break;
-      }
-      if(status==='error' || status==='failed'){
-        throw new Error(data.error || 'Username sweep failed.');
-      }
-      if(attempt % 3 === 0) addLog(`Scanning in parallel… ${results.length} results received.`);
+    try{
+      data = responseText ? JSON.parse(responseText) : null;
+    }catch{
+      data = {error: responseText || 'Non-JSON response from Vercel.'};
     }
+
+    if(!res.ok){
+      const upstream = data && data.upstreamStatus ? ` (upstream HTTP ${data.upstreamStatus})` : '';
+      throw new Error((data && data.error) || `Search service returned HTTP ${res.status}${upstream}`);
+    }
+
+    const totalFromResponse = Number(data && data.totalPlatforms);
+    if(Number.isFinite(totalFromResponse) && totalFromResponse > 0){
+      totalEl.textContent = totalFromResponse;
+    }
+
+    const finalResults = Array.isArray(data && data.results) ? data.results : [];
+    fill.style.width='100%';
+    count.textContent = `${finalResults.length} / ${Number(totalEl.textContent || finalResults.length)}`;
+    animateStats(finalResults);
+
+    if(grid && finalResults.length){
+      const visible = finalResults.slice(-40);
+      grid.innerHTML = visible.slice().reverse().map((r,i)=>{
+        const hit = String(r.status||'').toLowerCase()==='hit';
+        const platform = r.platform || 'Unknown platform';
+        const url = r.url || '#';
+        return `<div class="evidence-card ${hit?'hit':''}" style="animation-delay:${Math.min(i,12)*35}ms">
+          <div class="pname"><a href="${escAttr(url)}" target="_blank" rel="noopener">${esc(platform)}</a></div>
+          <div class="pmeta">${hit?'FOUND':'CHECKED'} · ${esc(String(r.responseTime ?? '—'))} ms</div>
+        </div>`;
+      }).join('');
+    }
+
+    addLog(`Sweep complete: ${finalResults.length} platform results returned.`);
 
     if(!data || String(data.status||'').toLowerCase()!=='completed'){
       throw new Error('The sweep timed out before completion. Try again shortly.');
@@ -2140,4 +2147,4 @@ async function runUsernameSweep(username, opts={}){
 }
 </script>
 </body>
-    </html>
+  </html>
