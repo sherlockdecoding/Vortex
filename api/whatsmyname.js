@@ -96,6 +96,9 @@ export default async function handler(req, res) {
 
     // ---------------------------------------
     // STEP 2: Poll WhatsMyName server-side
+    // (Their docs say GET, but the live API
+    // rejects GET with a bare 405 — polling
+    // via POST with the id in the body instead.)
     // ---------------------------------------
 
     let lastData = startData;
@@ -107,18 +110,18 @@ export default async function handler(req, res) {
         attempt === 0 ? 500 : 1000
       );
 
-      const pollResponse = await fetch(
-        `${UPSTREAM}?id=${encodeURIComponent(queryId)}`,
-        {
-          method: 'GET',
+      const pollResponse = await fetch(UPSTREAM, {
+        method: 'POST',
 
-          headers: {
-            'Accept': 'application/json'
-          },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
 
-          cache: 'no-store'
-        }
-      );
+        body: JSON.stringify({ id: queryId }),
+
+        cache: 'no-store'
+      });
 
       const pollData = await readJson(pollResponse);
 
@@ -132,12 +135,13 @@ export default async function handler(req, res) {
         console.error(
           'POLL 405',
           `attempt=${attempt}`,
+          'Allow header:', pollResponse.headers.get('allow'),
           JSON.stringify(pollData)
         );
 
         return res.status(502).json({
           error:
-            'WhatsMyName polling returned HTTP 405. The upstream API is rejecting the documented GET polling request.',
+            'WhatsMyName polling returned HTTP 405. The upstream API is rejecting the polling request.',
 
           upstreamStatus: 405,
 
@@ -247,4 +251,4 @@ export default async function handler(req, res) {
           : String(error)
     });
   }
-      }
+          }
