@@ -67,6 +67,12 @@ export default async function handler(req, res) {
     const startData = await readJson(startResponse);
 
     if (!startResponse.ok) {
+      console.error(
+        'START FAILED',
+        startResponse.status,
+        JSON.stringify(startData)
+      );
+
       return res.status(502).json({
         error: 'WhatsMyName could not start the search.',
         upstreamStatus: startResponse.status,
@@ -77,6 +83,11 @@ export default async function handler(req, res) {
     const queryId = startData.queryId;
 
     if (!queryId) {
+      console.error(
+        'NO QUERY ID',
+        JSON.stringify(startData)
+      );
+
       return res.status(502).json({
         error: 'WhatsMyName did not return a query ID.',
         upstream: startData
@@ -118,6 +129,11 @@ export default async function handler(req, res) {
       // ---------------------------------------
 
       if (pollResponse.status === 405) {
+        console.error(
+          'POLL 405',
+          `attempt=${attempt}`,
+          JSON.stringify(pollData)
+        );
 
         return res.status(502).json({
           error:
@@ -136,6 +152,12 @@ export default async function handler(req, res) {
       // ---------------------------------------
 
       if (!pollResponse.ok) {
+        console.error(
+          'POLL FAILED',
+          `attempt=${attempt}`,
+          pollResponse.status,
+          JSON.stringify(pollData)
+        );
 
         return res.status(502).json({
           error: 'WhatsMyName polling failed.',
@@ -168,6 +190,11 @@ export default async function handler(req, res) {
         status === 'error' ||
         status === 'failed'
       ) {
+        console.error(
+          'POLL REPORTED FAILURE',
+          `attempt=${attempt}`,
+          JSON.stringify(pollData)
+        );
 
         return res.status(502).json({
           error:
@@ -186,6 +213,11 @@ export default async function handler(req, res) {
     // ---------------------------------------
     // Timeout
     // ---------------------------------------
+
+    console.error(
+      'POLL TIMED OUT',
+      JSON.stringify(lastData)
+    );
 
     return res.status(504).json({
 
@@ -215,4 +247,4 @@ export default async function handler(req, res) {
           : String(error)
     });
   }
-        }
+      }
