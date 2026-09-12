@@ -270,6 +270,42 @@ canvas#globe{position:absolute;inset:0;display:block;}
   #topbar{flex-wrap:wrap;}
   #transcript{bottom:112px;}
 }
+
+/* ---------------- live explanation visualizer ---------------- */
+#liveviz{position:fixed;inset:0;z-index:100;display:none;pointer-events:none;background:radial-gradient(circle at 50% 42%,rgba(12,12,20,.18),rgba(0,0,0,.72) 92%)}
+#liveviz.active{display:block}
+#viz-shell{position:absolute;left:50%;top:50%;width:min(900px,94vw);height:min(650px,78vh);border:1px solid rgba(139,107,255,.35);border-radius:22px;background:rgba(9,9,14,.92);box-shadow:0 30px 100px rgba(0,0,0,.6),0 0 70px rgba(139,107,255,.08);backdrop-filter:blur(18px);overflow:hidden;opacity:0;transform:translate(-50%,-46%) scale(.96);transition:opacity .35s ease,transform .45s cubic-bezier(.2,.8,.25,1)}
+#liveviz.active #viz-shell{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#viz-shell::before{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 20%,rgba(47,232,208,.035) 50%,transparent 80%);animation:vizSweep 5s linear infinite;pointer-events:none}
+@keyframes vizSweep{from{transform:translateX(-70%)}to{transform:translateX(70%)}}
+#viz-top{height:64px;padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:14px;position:relative;z-index:3}
+#viz-kicker{font:9px 'JetBrains Mono',monospace;letter-spacing:.16em;color:var(--cyan)}
+#viz-title{font-size:18px;font-weight:700;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#viz-sub{font:9px 'JetBrains Mono',monospace;color:var(--ink-dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#viz-close{pointer-events:auto;width:32px;height:32px;border:1px solid var(--line);border-radius:50%;background:rgba(16,16,23,.8);color:var(--ink-dim);cursor:pointer;font-size:17px;flex:none}
+#viz-close:hover{border-color:var(--danger);color:var(--ink)}
+#viz-stage{position:absolute;left:0;right:0;top:64px;bottom:0;overflow:hidden}
+#viz-canvas{position:absolute;inset:0;width:100%;height:100%}
+#viz-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.viz-node{position:absolute;min-width:110px;max-width:190px;padding:10px 12px;border:1px solid rgba(139,107,255,.35);border-radius:12px;background:rgba(16,16,23,.94);box-shadow:0 0 25px rgba(139,107,255,.08);transform:translate(-50%,-50%) scale(.7);opacity:0;animation:vizNodeIn .55s cubic-bezier(.2,.8,.25,1) forwards;transition:transform .35s,border-color .25s,box-shadow .25s}
+.viz-node.hot{border-color:rgba(47,232,208,.7);box-shadow:0 0 28px rgba(47,232,208,.15),inset 0 0 20px rgba(47,232,208,.035)}
+.viz-node .node-type{font:7px 'JetBrains Mono',monospace;letter-spacing:.12em;color:var(--cyan);margin-bottom:4px}
+.viz-node .node-label{font-size:12px;font-weight:600;line-height:1.2}
+.viz-node .node-detail{font-size:9px;color:var(--ink-dim);line-height:1.35;margin-top:4px}
+@keyframes vizNodeIn{to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+.viz-link{stroke:rgba(47,232,208,.5);stroke-width:1.3;fill:none;stroke-dasharray:7 7;animation:dashFlow 1.1s linear infinite;filter:drop-shadow(0 0 4px rgba(47,232,208,.15))}
+.viz-link-label{fill:var(--ink-dim);font:8px 'JetBrains Mono',monospace;letter-spacing:.05em}
+@keyframes dashFlow{to{stroke-dashoffset:-28}}
+#viz-timeline{position:absolute;left:18px;right:18px;bottom:16px;height:76px;border:1px solid var(--line);border-radius:13px;background:rgba(10,10,15,.84);padding:10px 12px;display:flex;gap:7px;align-items:center;overflow:hidden}
+.viz-step{height:100%;min-width:100px;flex:1;position:relative;padding:8px 9px;border-radius:9px;border:1px solid transparent;background:rgba(20,20,29,.55);opacity:.5;transition:.35s}
+.viz-step.active{opacity:1;border-color:rgba(47,232,208,.35);background:rgba(47,232,208,.055);box-shadow:0 0 22px rgba(47,232,208,.06)}
+.viz-step .n{font:8px 'JetBrains Mono',monospace;color:var(--cyan)}
+.viz-step .l{font-size:10px;font-weight:600;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.viz-step .d{font-size:8px;color:var(--ink-dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#viz-progress{position:absolute;left:18px;right:18px;bottom:8px;height:2px;background:#191923;border-radius:5px;overflow:hidden}
+#viz-progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--violet),var(--cyan));transition:width .55s ease}
+#viz-livebadge{position:absolute;right:62px;top:19px;font:8px 'JetBrains Mono',monospace;color:var(--amber);letter-spacing:.12em}
+@media(max-width:600px){#viz-shell{height:min(610px,82vh);border-radius:17px}#viz-top{height:58px;padding:12px}.viz-node{min-width:92px;max-width:145px;padding:8px}.viz-node .node-label{font-size:10px}#viz-timeline{left:10px;right:10px;height:66px;gap:4px;padding:7px}.viz-step{min-width:82px}.viz-step .d{display:none}}
 </style>
 </head>
 <body>
@@ -356,6 +392,18 @@ canvas#globe{position:absolute;inset:0;display:block;}
   </div>
   <div id="gv-status" class="mono"></div>
   <div id="gv-card"></div>
+</div>
+
+
+<!-- ============ LIVE EXPLANATION VISUALIZER ============ -->
+<div id="liveviz" aria-live="polite">
+  <div id="viz-shell">
+    <div id="viz-top">
+      <div style="min-width:0"><div id="viz-kicker">LIVE EXPLANATION // VORTEX VISUAL ENGINE</div><div id="viz-title">Preparing demonstration…</div><div id="viz-sub">VORTEX IS BUILDING THE CONCEPT IN REAL TIME</div></div>
+      <div id="viz-livebadge">● LIVE</div><button id="viz-close" aria-label="close visualization">×</button>
+    </div>
+    <div id="viz-stage"><svg id="viz-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><div id="viz-canvas"></div><div id="viz-timeline"></div><div id="viz-progress"><div id="viz-progress-fill"></div></div></div>
+  </div>
 </div>
 
 <!-- ============ GENERIC RESULT VIEW (whois / breach / username) ============ -->
@@ -525,7 +573,7 @@ You are VORTEX, a sharp, calm, highly capable digital detective assistant.
 Speak naturally and conversationally. Be concise unless the user asks for detail.
 You are talking directly to the user by voice, so do not use markdown, bullet symbols,
 or awkward written formatting in spoken replies.
-For OSINT requests, help with lawful, ethical research and clearly distinguish facts,
+When explaining a concept rather than giving a short answer, use the show_visual tool to demonstrate it live on screen. Prefer visual demonstrations for processes, mechanisms, systems, relationships, comparisons, timelines, networks, science, mathematics, code, geography, and step-by-step reasoning. Call it early and update it as the explanation progresses. Make the visual match what you are saying and never mention the internal tool call. For OSINT requests, help with lawful, ethical research and clearly distinguish facts,
 inferences, and uncertainty.
 `;
 
@@ -760,6 +808,8 @@ async function handleLiveToolCall(toolCall){
         result = await runBreach(String(args.email || '').trim(), {fromLiveTool:true});
       }else if(name === 'username_sweep'){
         result = await runUsernameSweep(String(args.username || '').trim(), {fromLiveTool:true});
+      }else if(name === 'show_visual'){
+        result = VisualFX.show(args);
       }else{
         throw new Error('Unknown tool: '+name);
       }
@@ -1037,13 +1087,18 @@ async function connectLive(){
           properties:{username:{type:'STRING',description:'Username without the @ sign'}},
           required:['username']
         }
+      },
+      {
+        name:'show_visual',
+        description:'Render a live animated visual demonstration in VORTEX. Use whenever explaining a process, mechanism, system, relationship, sequence, comparison, timeline, network, science, math, code, geography, or step-by-step reasoning. Call it during the explanation and update it as the explanation progresses.',
+        parameters:{type:'OBJECT',properties:{scene:{type:'STRING'},title:{type:'STRING'},subtitle:{type:'STRING'},stepMs:{type:'NUMBER'},nodes:{type:'ARRAY',items:{type:'OBJECT',properties:{id:{type:'STRING'},label:{type:'STRING'},detail:{type:'STRING'},type:{type:'STRING'},x:{type:'NUMBER'},y:{type:'NUMBER'}}}},links:{type:'ARRAY',items:{type:'OBJECT',properties:{source:{type:'STRING'},target:{type:'STRING'},label:{type:'STRING'}}}},steps:{type:'ARRAY',items:{type:'OBJECT',properties:{label:{type:'STRING'},detail:{type:'STRING'},focus:{type:'ARRAY',items:{type:'STRING'}}}}}},required:['scene','title','nodes','steps']}
       }
     ];
 
     const config = {
       responseModalities:[Modality.AUDIO],
       systemInstruction:{parts:[{text:LIVE_SYSTEM + `
-You have access to VORTEX's live lookup tools. Use them when the user asks to trace an IP, check an email for breaches, look up a domain/WHOIS/RDAP information, or sweep a username. Do not pretend you performed a lookup without calling the appropriate tool. After a tool result arrives, briefly explain the result naturally.`}]},
+You have access to VORTEX's live lookup tools and live visual explanation engine. Use lookup tools for their matching OSINT tasks. Use show_visual whenever an explanation can be made clearer by demonstrating the idea on screen, and update it while speaking. Do not pretend you performed a lookup without calling the appropriate tool. After a tool result arrives, briefly explain the result naturally.`}]},
       inputAudioTranscription:{},
       outputAudioTranscription:{},
       thinkingConfig:{thinkingLevel:'minimal'},
@@ -1249,6 +1304,25 @@ function speak(text){
     }catch(e){}
   }
 }
+
+
+/* =====================================================================
+   LIVE EXPLANATION VISUAL ENGINE
+===================================================================== */
+const VisualFX=(()=>{
+  const root=document.getElementById('liveviz'),title=document.getElementById('viz-title'),sub=document.getElementById('viz-sub'),stage=document.getElementById('viz-canvas'),svg=document.getElementById('viz-svg'),timeline=document.getElementById('viz-timeline'),fill=document.getElementById('viz-progress-fill');
+  let current={nodes:[],links:[],steps:[]},timer=null;
+  const arr=v=>Array.isArray(v)?v:[], clean=v=>String(v==null?'':v).slice(0,220), clamp=(n,a,b)=>Math.max(a,Math.min(b,Number(n)||0));
+  function close(){root.classList.remove('active');if(timer)clearInterval(timer);timer=null;}
+  function nodes(raw){return arr(raw).slice(0,18).map((n,i)=>({id:String(n.id??`n${i}`),label:clean(n.label||n.name||`Node ${i+1}`),detail:clean(n.detail||n.description||''),type:clean(n.type||'CONCEPT').toUpperCase(),x:clamp(n.x,8,92)||8+((i%5)*18),y:clamp(n.y,8,68)||16+Math.floor(i/5)*17}));}
+  function layout(ns,scene){const c=ns.length||1;if(ns.some(n=>Number(n.x)!==8&&Number(n.y)!==16))return ns;if(scene==='timeline')ns.forEach((n,i)=>{n.x=10+(i/Math.max(1,c-1))*80;n.y=32});else if(scene==='comparison')ns.forEach((n,i)=>{n.x=i%2?68:32;n.y=22+Math.floor(i/2)*22});else ns.forEach((n,i)=>{const a=i/c*Math.PI*2-Math.PI/2,r=c>8?29:25;n.x=50+Math.cos(a)*r;n.y=34+Math.sin(a)*r*.62});return ns;}
+  function links(ns,ls){svg.innerHTML='';const m=new Map(ns.map(n=>[n.id,n]));arr(ls).slice(0,28).forEach((l,i)=>{const a=m.get(String(l.source)),b=m.get(String(l.target));if(!a||!b)return;const q=document.createElementNS('http://www.w3.org/2000/svg','line');q.setAttribute('x1',a.x);q.setAttribute('y1',a.y);q.setAttribute('x2',b.x);q.setAttribute('y2',b.y);q.setAttribute('class','viz-link');q.style.animationDelay=i*.05+'s';svg.appendChild(q);if(l.label){const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',(a.x+b.x)/2);t.setAttribute('y',(a.y+b.y)/2-1.5);t.setAttribute('text-anchor','middle');t.setAttribute('class','viz-link-label');t.textContent=clean(l.label);svg.appendChild(t);}});}
+  function renderNodes(ns){stage.innerHTML='';ns.forEach((n,i)=>{const e=document.createElement('div');e.className='viz-node';e.style.left=n.x+'%';e.style.top=n.y+'%';e.style.animationDelay=Math.min(i,12)*.055+'s';e.dataset.id=n.id;e.innerHTML=`<div class="node-type">${esc(n.type)}</div><div class="node-label">${esc(n.label)}</div>${n.detail?`<div class="node-detail">${esc(n.detail)}</div>`:''}`;stage.appendChild(e);});}
+  function steps(ss,active){timeline.innerHTML='';ss.slice(0,8).forEach((st,i)=>{const e=document.createElement('div');e.className='viz-step'+(i===active?' active':'');e.innerHTML=`<div class="n">STEP ${String(i+1).padStart(2,'0')}</div><div class="l">${esc(clean(st.label||`Stage ${i+1}`))}</div><div class="d">${esc(clean(st.detail||''))}</div>`;timeline.appendChild(e);});fill.style.width=(ss.length?(active+1)/ss.length*100:100)+'%';}
+  function focus(i){const ss=current.steps;if(!ss.length)return;const x=Math.max(0,Math.min(ss.length-1,i));steps(ss,x);const ids=new Set(arr(ss[x]?.focus).map(String));stage.querySelectorAll('.viz-node').forEach((e,j)=>e.classList.toggle('hot',ids.size?ids.has(e.dataset.id):j%ss.length===x));}
+  function show(a={}){root.classList.add('active');if(timer)clearInterval(timer);const scene=clean(a.scene||'flow').toLowerCase();current={nodes:layout(nodes(a.nodes),scene),links:arr(a.links),steps:arr(a.steps)};title.textContent=clean(a.title||'Live demonstration');sub.textContent=clean(a.subtitle||scene.toUpperCase()+' // VISUALIZED IN REAL TIME');links(current.nodes,current.links);renderNodes(current.nodes);steps(current.steps,0);if(current.steps.length>1){let i=0;timer=setInterval(()=>{i=(i+1)%current.steps.length;focus(i)},Math.max(1200,Number(a.stepMs)||2200));}else focus(0);return{ok:true,scene,title:a.title||'Live demonstration'};}
+  document.getElementById('viz-close').addEventListener('click',close);return{show,close};
+})();
 
 /* =====================================================================
    QUERY PIPELINE
@@ -2183,4 +2257,4 @@ async function runUsernameSweep(username, opts={}){
 }
 </script>
 </body>
-          </html>
+    </html>
