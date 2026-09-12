@@ -66,6 +66,9 @@ export default async function handler(req, res) {
 
     const startData = await readJson(startResponse);
 
+    // TEMP DIAGNOSTIC: log everything the initial POST returns
+    console.error('START RESPONSE FULL', JSON.stringify(startData));
+
     if (!startResponse.ok) {
       console.error(
         'START FAILED',
@@ -78,6 +81,19 @@ export default async function handler(req, res) {
         upstreamStatus: startResponse.status,
         upstream: startData
       });
+    }
+
+    // ---------------------------------------
+    // If the initial POST already returned a
+    // completed result set, skip polling
+    // entirely and return it right away.
+    // ---------------------------------------
+
+    if (
+      String(startData.status || '').toLowerCase() === 'completed' ||
+      Array.isArray(startData.results)
+    ) {
+      return res.status(200).json(startData);
     }
 
     const queryId = startData.queryId;
@@ -96,9 +112,6 @@ export default async function handler(req, res) {
 
     // ---------------------------------------
     // STEP 2: Poll WhatsMyName server-side
-    // (Their docs say GET, but the live API
-    // rejects GET with a bare 405 — polling
-    // via POST with the id in the body instead.)
     // ---------------------------------------
 
     let lastData = startData;
@@ -251,4 +264,4 @@ export default async function handler(req, res) {
           : String(error)
     });
   }
-          }
+      }
