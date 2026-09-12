@@ -1907,25 +1907,58 @@ async function runUsernameSweep(username, opts={}){
   openResultView('IDENTITY SWEEP','700+ PLATFORM USERNAME SEARCH');
 
   const API = 'https://whatsmyname.ink/api/search';
-  // Static HTML files can be opened from file://, where the browser may block
-  // cross-origin requests. We try the API directly first, then transparently
-  // retry through a keyless CORS relay that supports POST + GET.
-  const CORS_RELAY = 'https://proxy.killcors.com?url=';
+  // Vortex is a single static HTML file, so it may be opened from file://.
+  // In that case the API can be blocked by browser CORS rules. The old
+  // implementation reused one AbortController for both attempts and relied
+  // on a single relay, which could leave the search stuck after the first
+  // failed request.
+  const CORS_RELAYS = [
+    'https://corsproxy.io/?url=',
+    'https://proxy.killcors.com?url='
+  ];
+  const OFFICIAL_SEARCH = 'https://whatsmyname.io/search?username=';
   const escAttr = v => esc(v).replace(/`/g,'&#96;');
 
-  async function apiFetch(url, init={}, timeoutMs=25000){
+  async function fetchWithTimeout(url, init={}, timeoutMs=30000){
     const controller = new AbortController();
     const timer = setTimeout(()=>controller.abort(), timeoutMs);
     try{
-      try{
-        return await fetch(url, {...init, signal:controller.signal});
-      }catch(directErr){
-        const relayUrl = CORS_RELAY + encodeURIComponent(url);
-        return await fetch(relayUrl, {...init, signal:controller.signal});
-      }
+      return await fetch(url, {
+        ...init,
+        signal: controller.signal,
+        cache: 'no-store'
+      });
     }finally{
       clearTimeout(timer);
     }
+  }
+
+  async function apiFetch(url, init={}, timeoutMs=30000){
+    // 1) Try the real API directly.
+    try{
+      const res = await fetchWithTimeout(url, init, timeoutMs);
+      if(res.ok) return res;
+      // A normal HTTP response means the server was reached. Do not hide
+      // useful 4xx/5xx responses behind a proxy retry.
+      if(res.status >= 400) return res;
+    }catch(directErr){
+      // Continue to CORS relays for file:// / browser CORS failures.
+    }
+
+    // 2) Try independent relay requests. Each gets a fresh timeout/controller.
+    let lastError = null;
+    for(const relay of CORS_RELAYS){
+      try{
+        const relayUrl = relay + encodeURIComponent(url);
+        const res = await fetchWithTimeout(relayUrl, init, timeoutMs);
+        if(res.ok) return res;
+        lastError = new Error(`Relay returned HTTP ${res.status}`);
+      }catch(err){
+        lastError = err;
+      }
+    }
+
+    throw lastError || new Error('Username API could not be reached.');
   }
 
   // Animated live dashboard while the API works.
@@ -2002,7 +2035,7 @@ async function runUsernameSweep(username, opts={}){
     if(!queryId) throw new Error('Search service did not return a query ID.');
 
     let data = null;
-    for(let attempt=0; attempt<45; attempt++){
+    for(let attempt=0; attempt<90; attempt++){
       await new Promise(r=>setTimeout(r, attempt===0 ? 500 : 1000));
       const res = await apiFetch(`${API}?id=${encodeURIComponent(queryId)}`);
       if(!res.ok) throw new Error(`Polling failed: HTTP ${res.status}`);
@@ -2138,4 +2171,4 @@ async function runUsernameSweep(username, opts={}){
 }
 </script>
 </body>
-  </html>
+    </html>
