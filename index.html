@@ -331,6 +331,16 @@ canvas#globe{position:absolute;inset:0;display:block;}
   #viz-timeline{height:58px}
   .viz-step{min-width:72px;flex-basis:72px}
 }
+
+/* Demonstration motion layer */
+#viz-action{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;width:min(420px,70vw);padding:14px 16px;border:1px solid rgba(47,232,208,.22);border-radius:14px;background:rgba(8,8,13,.84);backdrop-filter:blur(10px);text-align:center;pointer-events:none;opacity:0;transition:.35s}
+#viz-action.show{opacity:1}.viz-action-k{font:8px 'JetBrains Mono',monospace;color:var(--cyan);letter-spacing:.13em}.viz-action-t{font-size:15px;font-weight:700;margin-top:4px}.viz-action-d{font-size:10px;color:var(--ink-dim);line-height:1.45;margin-top:4px}
+.viz-node{transition:left .7s cubic-bezier(.2,.8,.25,1),top .7s cubic-bezier(.2,.8,.25,1),transform .35s,border-color .25s,box-shadow .25s,opacity .35s}
+.viz-node.hot{animation:vizHot 1.2s ease-in-out infinite alternate}
+@keyframes vizHot{from{box-shadow:0 0 18px rgba(47,232,208,.10),inset 0 0 10px rgba(47,232,208,.02)}to{box-shadow:0 0 38px rgba(47,232,208,.28),inset 0 0 20px rgba(47,232,208,.06)}}
+.viz-link.active-link{stroke:var(--cyan);stroke-width:3;filter:drop-shadow(0 0 7px rgba(47,232,208,.35))}
+.viz-flow-dot{fill:var(--cyan);filter:drop-shadow(0 0 8px rgba(47,232,208,.8))}
+@media(max-width:520px){#viz-action{width:72vw;padding:10px 12px}.viz-action-t{font-size:12px}.viz-action-d{font-size:8.5px}}
 </style>
 </head>
 <body>
@@ -427,7 +437,7 @@ canvas#globe{position:absolute;inset:0;display:block;}
       <div style="min-width:0"><div id="viz-kicker">LIVE EXPLANATION // VORTEX VISUAL ENGINE</div><div id="viz-title">Preparing demonstration…</div><div id="viz-sub">VORTEX IS BUILDING THE CONCEPT IN REAL TIME</div></div>
       <div id="viz-livebadge">● LIVE</div><button id="viz-close" aria-label="close visualization">×</button>
     </div>
-    <div id="viz-stage"><svg id="viz-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><div id="viz-canvas"></div><div id="viz-timeline"></div><div id="viz-progress"><div id="viz-progress-fill"></div></div></div>
+    <div id="viz-stage"><svg id="viz-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><div id="viz-canvas"></div><div id="viz-action"><div class="viz-action-k">CURRENT ACTION</div><div class="viz-action-t" id="viz-action-title"></div><div class="viz-action-d" id="viz-action-detail"></div></div><div id="viz-timeline"></div><div id="viz-progress"><div id="viz-progress-fill"></div></div></div>
   </div>
 </div>
 
@@ -1335,45 +1345,42 @@ function speak(text){
    LIVE EXPLANATION VISUAL ENGINE
 ===================================================================== */
 const VisualFX=(()=>{
-  const root=document.getElementById('liveviz'),title=document.getElementById('viz-title'),sub=document.getElementById('viz-sub'),stage=document.getElementById('viz-canvas'),svg=document.getElementById('viz-svg'),timeline=document.getElementById('viz-timeline'),fill=document.getElementById('viz-progress-fill');
-  let current={nodes:[],links:[],steps:[]},timer=null;
+  const root=document.getElementById('liveviz'),title=document.getElementById('viz-title'),sub=document.getElementById('viz-sub'),stage=document.getElementById('viz-canvas'),svg=document.getElementById('viz-svg'),timeline=document.getElementById('viz-timeline'),fill=document.getElementById('viz-progress-fill'),action=document.getElementById('viz-action'),actionTitle=document.getElementById('viz-action-title'),actionDetail=document.getElementById('viz-action-detail');
+  let current={nodes:[],links:[],steps:[]},timer=null,raf=null,token=0;
   const arr=v=>Array.isArray(v)?v:[], clean=v=>String(v==null?'':v).slice(0,220), clamp=(n,a,b)=>Math.max(a,Math.min(b,Number(n)||0));
-  function close(){root.classList.remove('active');if(timer)clearInterval(timer);timer=null;}
+  function close(){token++;root.classList.remove('active');if(timer)clearInterval(timer);if(raf)cancelAnimationFrame(raf);timer=null;raf=null;}
   function nodes(raw){return arr(raw).slice(0,18).map((n,i)=>({id:String(n.id??`n${i}`),label:clean(n.label||n.name||`Node ${i+1}`),detail:clean(n.detail||n.description||''),type:clean(n.type||'CONCEPT').toUpperCase(),x:clamp(n.x,8,92)||8+((i%5)*18),y:clamp(n.y,8,68)||16+Math.floor(i/5)*17}));}
   function layout(ns,scene){
-    const c=ns.length||1;
-    const mobile=window.innerWidth<=600;
-    const verySmall=window.innerWidth<=380;
-    const hasCustom=ns.some(n=>Number(n.x)!==8&&Number(n.y)!==16);
-    if(hasCustom){
-      const minX=mobile?(verySmall?25:22):8, maxX=mobile?(verySmall?75:78):92;
-      const minY=mobile?10:8, maxY=mobile?60:68;
-      ns.forEach(n=>{n.x=clamp(n.x,minX,maxX);n.y=clamp(n.y,minY,maxY)});
-      return ns;
-    }
-    if(scene==='timeline'){
-      if(mobile){
-        const cols=Math.min(c,4);
-        ns.forEach((n,i)=>{const row=Math.floor(i/cols),col=i%cols;n.x=18+(col/Math.max(1,cols-1))*64;n.y=18+row*18});
-      }else ns.forEach((n,i)=>{n.x=10+(i/Math.max(1,c-1))*80;n.y=32});
-    }else if(scene==='comparison'){
-      if(mobile) ns.forEach((n,i)=>{n.x=i%2?68:32;n.y=18+Math.floor(i/2)*18});
-      else ns.forEach((n,i)=>{n.x=i%2?68:32;n.y=22+Math.floor(i/2)*22});
-    }else{
-      const count=ns.length||1;
-      const r=mobile?(verySmall?23:25):(count>8?29:25);
-      const cy=mobile?32:34;
-      ns.forEach((n,i)=>{const a=i/count*Math.PI*2-Math.PI/2;n.x=50+Math.cos(a)*r;n.y=cy+Math.sin(a)*r*(mobile?.55:.62)});
-    }
+    const c=ns.length||1,mobile=innerWidth<=600,verySmall=innerWidth<=380;
+    const hasCustom=ns.some(n=>Number.isFinite(+n.x)||Number.isFinite(+n.y));
+    if(hasCustom){const minX=mobile?(verySmall?20:17):8,maxX=mobile?(verySmall?80:83):92,minY=mobile?10:8,maxY=mobile?60:68;ns.forEach(n=>{n.x=clamp(n.x||50,minX,maxX);n.y=clamp(n.y||35,minY,maxY)});return ns;}
+    if(scene==='timeline'){const cols=mobile?Math.min(c,3):Math.min(c,6);ns.forEach((n,i)=>{const row=Math.floor(i/cols),col=i%cols;n.x=cols===1?50:14+(col/Math.max(1,cols-1))*72;n.y=20+row*(mobile?18:22)});}
+    else if(scene==='comparison'){ns.forEach((n,i)=>{n.x=i%2?70:30;n.y=20+Math.floor(i/2)*(mobile?18:22)});}
+    else {const r=mobile?(verySmall?22:27):(c>8?31:27),cy=mobile?32:34;ns.forEach((n,i)=>{const a=i/c*Math.PI*2-Math.PI/2;n.x=50+Math.cos(a)*r;n.y=cy+Math.sin(a)*r*(mobile?.58:.62)});}
     return ns;
   }
-  function links(ns,ls){svg.innerHTML='';const m=new Map(ns.map(n=>[n.id,n]));arr(ls).slice(0,28).forEach((l,i)=>{const a=m.get(String(l.source)),b=m.get(String(l.target));if(!a||!b)return;const q=document.createElementNS('http://www.w3.org/2000/svg','line');q.setAttribute('x1',a.x);q.setAttribute('y1',a.y);q.setAttribute('x2',b.x);q.setAttribute('y2',b.y);q.setAttribute('class','viz-link');q.style.animationDelay=i*.05+'s';svg.appendChild(q);if(l.label){const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',(a.x+b.x)/2);t.setAttribute('y',(a.y+b.y)/2-1.5);t.setAttribute('text-anchor','middle');t.setAttribute('class','viz-link-label');t.textContent=clean(l.label);svg.appendChild(t);}});}
+  function links(ns,ls){svg.innerHTML='';const m=new Map(ns.map(n=>[n.id,n]));arr(ls).slice(0,40).forEach((l,i)=>{const a=m.get(String(l.source)),b=m.get(String(l.target));if(!a||!b)return;const q=document.createElementNS('http://www.w3.org/2000/svg','line');q.setAttribute('x1',a.x);q.setAttribute('y1',a.y);q.setAttribute('x2',b.x);q.setAttribute('y2',b.y);q.setAttribute('class','viz-link');q.dataset.source=a.id;q.dataset.target=b.id;q.dataset.index=i;svg.appendChild(q);if(l.label){const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',(a.x+b.x)/2);t.setAttribute('y',(a.y+b.y)/2-1.5);t.setAttribute('text-anchor','middle');t.setAttribute('class','viz-link-label');t.textContent=clean(l.label);svg.appendChild(t);}});}
   function renderNodes(ns){stage.innerHTML='';ns.forEach((n,i)=>{const e=document.createElement('div');e.className='viz-node';e.style.left=n.x+'%';e.style.top=n.y+'%';e.style.animationDelay=Math.min(i,12)*.055+'s';e.dataset.id=n.id;e.innerHTML=`<div class="node-type">${esc(n.type)}</div><div class="node-label">${esc(n.label)}</div>${n.detail?`<div class="node-detail">${esc(n.detail)}</div>`:''}`;stage.appendChild(e);});}
-  function steps(ss,active){timeline.innerHTML='';ss.forEach((st,i)=>{const e=document.createElement('div');e.className='viz-step'+(i===active?' active':'');e.innerHTML=`<div class="n">STEP ${String(i+1).padStart(2,'0')}</div><div class="l">${esc(clean(st.label||`Stage ${i+1}`))}</div><div class="d">${esc(clean(st.detail||''))}</div>`;timeline.appendChild(e);if(i===active){requestAnimationFrame(()=>e.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}));}});fill.style.width=(ss.length?(active+1)/ss.length*100:100)+'%';}
-  function focus(i){const ss=current.steps;if(!ss.length)return;const x=Math.max(0,Math.min(ss.length-1,i));steps(ss,x);const ids=new Set(arr(ss[x]?.focus).map(String));stage.querySelectorAll('.viz-node').forEach((e,j)=>e.classList.toggle('hot',ids.size?ids.has(e.dataset.id):j%ss.length===x));}
-  function show(a={}){root.classList.add('active');if(timer)clearInterval(timer);const scene=clean(a.scene||'flow').toLowerCase();current={nodes:layout(nodes(a.nodes),scene),links:arr(a.links),steps:arr(a.steps)};title.textContent=clean(a.title||'Live demonstration');sub.textContent=clean(a.subtitle||scene.toUpperCase()+' // VISUALIZED IN REAL TIME');links(current.nodes,current.links);renderNodes(current.nodes);steps(current.steps,0);if(current.steps.length>1){let i=0;timer=setInterval(()=>{i=(i+1)%current.steps.length;focus(i)},Math.max(1200,Number(a.stepMs)||2200));}else focus(0);return{ok:true,scene,title:a.title||'Live demonstration'};}
+  function steps(ss,active){timeline.innerHTML='';ss.forEach((st,i)=>{const e=document.createElement('div');e.className='viz-step'+(i===active?' active':'');e.innerHTML=`<div class="n">STEP ${String(i+1).padStart(2,'0')}</div><div class="l">${esc(clean(st.label||`Stage ${i+1}`))}</div><div class="d">${esc(clean(st.detail||''))}</div>`;timeline.appendChild(e);if(i===active)requestAnimationFrame(()=>e.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}));});fill.style.width=(ss.length?(active+1)/ss.length*100:100)+'%';}
+  function animateFlow(from,to,duration,my){
+    const old=svg.querySelector('.viz-flow-dot');if(old)old.remove();if(!from||!to)return;
+    const dot=document.createElementNS('http://www.w3.org/2000/svg','circle');dot.setAttribute('r','1.5');dot.setAttribute('class','viz-flow-dot');svg.appendChild(dot);
+    const t0=performance.now(); const loop=now=>{if(my!==token||!root.classList.contains('active')){dot.remove();return;}const p=Math.min(1,(now-t0)/duration),e=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;dot.setAttribute('cx',from.x+(to.x-from.x)*e);dot.setAttribute('cy',from.y+(to.y-from.y)*e);if(p<1)raf=requestAnimationFrame(loop);else dot.remove();};raf=requestAnimationFrame(loop);
+  }
+  function focus(i){
+    const ss=current.steps;if(!ss.length)return;const x=Math.max(0,Math.min(ss.length-1,i)),st=ss[x]||{};steps(ss,x);
+    const ids=new Set(arr(st.focus).map(String));const ns=current.nodes;stage.querySelectorAll('.viz-node').forEach((e,j)=>e.classList.toggle('hot',ids.size?ids.has(e.dataset.id):j===x%Math.max(1,ns.length)));
+    svg.querySelectorAll('.viz-link').forEach(e=>e.classList.remove('active-link'));
+    let from=null,to=null;
+    if(ids.size>=2){const a=ns.find(n=>n.id===String([...ids][0])),b=ns.find(n=>n.id===String([...ids][1]));from=a;to=b;}
+    else if(ids.size===1){const a=ns.find(n=>n.id===String([...ids][0]));const next=ns[(ns.indexOf(a)+1)%Math.max(1,ns.length)];from=a;to=next;}
+    else if(ns.length>1){from=ns[x%ns.length];to=ns[(x+1)%ns.length];}
+    if(from&&to){const link=[...svg.querySelectorAll('.viz-link')].find(e=>e.dataset.source===from.id&&e.dataset.target===to.id);if(link)link.classList.add('active-link');animateFlow(from,to,Math.max(650,Number(current.stepMs)||1100),token);}
+    actionTitle.textContent=clean(st.label||`Stage ${x+1}`);actionDetail.textContent=clean(st.detail||'Watch the highlighted elements: this is the operation being explained now.');action.classList.add('show');
+  }
+  function show(a={}){close();root.classList.add('active');token++;const my=token;const scene=clean(a.scene||'flow').toLowerCase();current={nodes:layout(nodes(a.nodes),scene),links:arr(a.links),steps:arr(a.steps),stepMs:Math.max(800,Number(a.stepMs)||2200)};title.textContent=clean(a.title||'Live demonstration');sub.textContent=clean(a.subtitle||scene.toUpperCase()+' // LIVE DEMONSTRATION');links(current.nodes,current.links);renderNodes(current.nodes);steps(current.steps,0);focus(0);if(current.steps.length>1){let i=0;timer=setInterval(()=>{if(my!==token)return;i=(i+1)%current.steps.length;focus(i)},current.stepMs);}return{ok:true,scene,title:a.title||'Live demonstration',steps:current.steps.length};}
   document.getElementById('viz-close').addEventListener('click',close);return{show,close};
-})();
+})();;
 
 /* =====================================================================
    QUERY PIPELINE
@@ -2308,4 +2315,4 @@ async function runUsernameSweep(username, opts={}){
 }
 </script>
 </body>
-                                                                       </html>
+      </html>
