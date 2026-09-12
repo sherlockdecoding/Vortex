@@ -647,7 +647,13 @@ function playPCMChunk(b64){
 
     const source = playbackContext.createBufferSource();
     source.buffer = buffer;
-    source.connect(playbackMaster || playbackContext.destination);
+
+    const chunkGain = playbackContext.createGain();
+    chunkGain.gain.value = 1;
+    source.connect(chunkGain);
+    chunkGain.connect(playbackMaster || playbackContext.destination);
+    source._chunkGain = chunkGain;
+
     activeSources.add(source);
 
     source.onended = ()=>{
