@@ -1,11 +1,17 @@
+export const config = {
+  maxDuration: 60
+};
+
 const SITES = [
   {
     platform: 'GitHub',
-    url: username => `https://github.com/${encodeURIComponent(username)}`
+    url: username =>
+      `https://github.com/${encodeURIComponent(username)}`
   },
   {
     platform: 'GitLab',
-    url: username => `https://gitlab.com/${encodeURIComponent(username)}`
+    url: username =>
+      `https://gitlab.com/${encodeURIComponent(username)}`
   },
   {
     platform: 'Reddit',
@@ -14,226 +20,431 @@ const SITES = [
   },
   {
     platform: 'Keybase',
-    url: username => `https://keybase.io/${encodeURIComponent(username)}`
+    url: username =>
+      `https://keybase.io/${encodeURIComponent(username)}`
   }
 ];
 
-// Temporary in-memory cache.
-// Note: serverless instances can restart, so the second request may
-// occasionally land on another instance. The HTML currently sends the
-// same username both times, so we also support returning the result
-// directly if a cached job is unavailable.
-const jobs = new Map();
+
+/* Temporary completed searches */
+
+const completedSearches = new Map();
+
 
 function cleanUsername(value) {
+
   return String(value || '')
     .replace(/^@/, '')
-    .trim();
+    .trim()
+    .toLowerCase();
+
 }
 
+
 function makeQueryId() {
+
   return (
     Date.now().toString(36) +
     '-' +
-    Math.random().toString(36).slice(2, 10)
+    Math.random()
+      .toString(36)
+      .slice(2, 10)
   );
+
 }
 
+
 async function checkSite(site, username) {
+
   const url = site.url(username);
-  const started = Date.now();
 
-  const controller = new AbortController();
+  const started =
+    Date.now();
 
-  const timer = setTimeout(
-    () => controller.abort(),
-    8000
-  );
+  const controller =
+    new AbortController();
+
+  const timer =
+    setTimeout(
+      () => controller.abort(),
+      8000
+    );
+
 
   try {
-    const response = await fetch(url, {
-      method: 'GET',
-      redirect: 'follow',
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0'
-      }
-    });
 
-    let status = 'unknown';
+    const response =
+      await fetch(url, {
 
-    if (response.status === 404) {
-      status = 'not_found';
-    } else if (response.ok) {
-      status = 'hit';
+        method: 'GET',
+
+        redirect: 'follow',
+
+        signal:
+          controller.signal,
+
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0'
+        }
+
+      });
+
+
+    let status =
+      'unknown';
+
+
+    if (
+      response.status === 404
+    ) {
+
+      status =
+        'not_found';
+
     }
 
+    else if (
+      response.ok
+    ) {
+
+      status =
+        'hit';
+
+    }
+
+
     return {
-      platform: site.platform,
+
+      platform:
+        site.platform,
+
       url,
+
       status,
-      responseTime: Date.now() - started
+
+      responseTime:
+        Date.now() - started
+
     };
+
 
   } catch (error) {
 
     return {
-      platform: site.platform,
+
+      platform:
+        site.platform,
+
       url,
-      status: 'unknown',
-      responseTime: Date.now() - started
+
+      status:
+        'unknown',
+
+      responseTime:
+        Date.now() - started
+
     };
+
 
   } finally {
 
-    clearTimeout(timer);
+    clearTimeout(
+      timer
+    );
 
   }
+
 }
+
 
 async function runSweep(username) {
 
-  const results = await Promise.all(
-    SITES.map(site =>
-      checkSite(site, username)
-    )
-  );
+  const results =
+    await Promise.all(
+
+      SITES.map(
+        site =>
+          checkSite(
+            site,
+            username
+          )
+      )
+
+    );
+
 
   return {
+
     username,
-    status: 'completed',
-    totalPlatforms: results.length,
+
+    status:
+      'completed',
+
+    totalPlatforms:
+      results.length,
+
     results
+
   };
+
 }
 
-export default async function handler(req, res) {
 
-  if (req.method !== 'POST') {
+export default async function handler(
+  req,
+  res
+) {
 
-    res.setHeader('Allow', 'POST');
 
-    return res.status(405).json({
-      error: 'Method not allowed. Use POST.'
-    });
+  if (
+    req.method !== 'POST'
+  ) {
+
+    res.setHeader(
+      'Allow',
+      'POST'
+    );
+
+
+    return res
+      .status(405)
+      .json({
+
+        error:
+          'Method not allowed. Use POST.'
+
+      });
 
   }
 
+
   try {
 
+
     const body =
+
       typeof req.body === 'string'
-        ? JSON.parse(req.body || '{}')
-        : (req.body || {});
+
+        ? JSON.parse(
+            req.body || '{}'
+          )
+
+        : (
+            req.body || {}
+          );
+
 
     const username =
-      cleanUsername(body.username);
+      cleanUsername(
+        body.username
+      );
 
-    const queryId =
-      String(body.queryId || body.id || '');
+
+    const requestedQueryId =
+      String(
+        body.queryId ||
+        body.id ||
+        ''
+      );
+
 
     /*
-     * OLD HTML COMPATIBILITY
-     *
-     * If the request includes a query ID, return the stored result.
+     * ------------------------------------------------
+     * If old Vortex sends a query ID,
+     * try to return that completed search.
+     * ------------------------------------------------
      */
-    if (queryId) {
 
-      const job =
-        jobs.get(queryId);
+    if (
+      requestedQueryId
+    ) {
 
-      if (job) {
+      for (
+        const search of
+        completedSearches.values()
+      ) {
 
-        return res.status(200).json(
-          job
-        );
+        if (
+          search.queryId ===
+          requestedQueryId
+        ) {
+
+          return res
+            .status(200)
+            .json(
+              search
+            );
+
+        }
 
       }
 
-      return res.status(404).json({
-        error: 'Search job not found.'
-      });
 
-    }
+      return res
+        .status(404)
+        .json({
 
+          error:
+            'Search job not found.'
 
-    if (!username) {
-
-      return res.status(400).json({
-        error: 'Username is required.'
-      });
+        });
 
     }
 
 
     /*
-     * Run the sweep immediately.
+     * Username is required.
      */
+
+    if (
+      !username
+    ) {
+
+      return res
+        .status(400)
+        .json({
+
+          error:
+            'Username is required.'
+
+        });
+
+    }
+
+
+    /*
+     * ------------------------------------------------
+     * SECOND REQUEST FOR SAME USERNAME
+     *
+     * Return completed results.
+     *
+     * This lets the old Vortex HTML work even if
+     * it sends the username again instead of queryId.
+     * ------------------------------------------------
+     */
+
+    const existing =
+      completedSearches.get(
+        username
+      );
+
+
+    if (
+      existing
+    ) {
+
+      return res
+        .status(200)
+        .json(
+          existing
+        );
+
+    }
+
+
+    /*
+     * ------------------------------------------------
+     * FIRST REQUEST
+     *
+     * Run the sweep and store it.
+     * Return only queryId so the old HTML continues
+     * to its second request.
+     * ------------------------------------------------
+     */
+
     const result =
-      await runSweep(username);
+      await runSweep(
+        username
+      );
 
 
-    /*
-     * Create a query ID so the old Vortex HTML
-     * can continue using its first-call workflow.
-     */
-    const newQueryId =
+    const queryId =
       makeQueryId();
 
 
-    jobs.set(
-      newQueryId,
-      {
-        ...result,
-        queryId: newQueryId
-      }
+    const completedResult = {
+
+      ...result,
+
+      queryId
+
+    };
+
+
+    completedSearches.set(
+
+      username,
+
+      completedResult
+
     );
 
 
     /*
-     * Remove the temporary result after 2 minutes.
+     * Remove after 2 minutes.
      */
-    setTimeout(() => {
 
-      jobs.delete(
-        newQueryId
-      );
+    setTimeout(
+      () => {
 
-    }, 120000);
+        completedSearches.delete(
+          username
+        );
+
+      },
+
+      120000
+    );
 
 
     /*
-     * The old HTML's first request expects queryId.
+     * First response:
+     * compatible with old Vortex.
      */
-    return res.status(200).json({
 
-      queryId: newQueryId,
+    return res
+      .status(200)
+      .json({
 
-      totalPlatforms:
-        result.totalPlatforms
+        queryId,
 
-    });
+        totalPlatforms:
+          result.totalPlatforms
+
+      });
 
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
+
 
     console.error(
       'Username sweep error:',
       error
     );
 
-    return res.status(500).json({
 
-      error:
-        'Username sweep failed.',
+    return res
+      .status(500)
+      .json({
 
-      details:
-        error instanceof Error
-          ? error.message
-          : String(error)
+        error:
+          'Username sweep failed.',
 
-    });
+        details:
+
+          error instanceof Error
+
+            ? error.message
+
+            : String(
+                error
+              )
+
+      });
 
   }
 
-      }
+             }
