@@ -296,7 +296,7 @@ canvas#globe{position:absolute;inset:0;display:block;}
 .viz-link{stroke:rgba(47,232,208,.5);stroke-width:1.3;fill:none;stroke-dasharray:7 7;animation:dashFlow 1.1s linear infinite;filter:drop-shadow(0 0 4px rgba(47,232,208,.15))}
 .viz-link-label{fill:var(--ink-dim);font:8px 'JetBrains Mono',monospace;letter-spacing:.05em}
 @keyframes dashFlow{to{stroke-dashoffset:-28}}
-#viz-timeline{position:absolute;left:18px;right:18px;bottom:16px;height:76px;border:1px solid var(--line);border-radius:13px;background:rgba(10,10,15,.84);padding:10px 12px;display:flex;gap:7px;align-items:center;overflow:hidden}
+#viz-timeline{position:absolute;left:18px;right:18px;bottom:16px;height:76px;border:1px solid var(--line);border-radius:13px;background:rgba(10,10,15,.84);padding:10px 12px;display:flex;gap:7px;align-items:center;overflow-x:auto;overflow-y:hidden;scroll-behavior:smooth;overscroll-behavior-x:contain;scrollbar-width:thin}
 .viz-step{height:100%;min-width:100px;flex:1;position:relative;padding:8px 9px;border-radius:9px;border:1px solid transparent;background:rgba(20,20,29,.55);opacity:.5;transition:.35s}
 .viz-step.active{opacity:1;border-color:rgba(47,232,208,.35);background:rgba(47,232,208,.055);box-shadow:0 0 22px rgba(47,232,208,.06)}
 .viz-step .n{font:8px 'JetBrains Mono',monospace;color:var(--cyan)}
@@ -1360,8 +1360,6 @@ const VisualFX=(()=>{
       if(mobile) ns.forEach((n,i)=>{n.x=i%2?68:32;n.y=18+Math.floor(i/2)*18});
       else ns.forEach((n,i)=>{n.x=i%2?68:32;n.y=22+Math.floor(i/2)*22});
     }else{
-      const maxNodes=mobile?12:c;
-      if(c>maxNodes) ns=ns.slice(0,maxNodes);
       const count=ns.length||1;
       const r=mobile?(verySmall?23:25):(count>8?29:25);
       const cy=mobile?32:34;
@@ -1371,7 +1369,7 @@ const VisualFX=(()=>{
   }
   function links(ns,ls){svg.innerHTML='';const m=new Map(ns.map(n=>[n.id,n]));arr(ls).slice(0,28).forEach((l,i)=>{const a=m.get(String(l.source)),b=m.get(String(l.target));if(!a||!b)return;const q=document.createElementNS('http://www.w3.org/2000/svg','line');q.setAttribute('x1',a.x);q.setAttribute('y1',a.y);q.setAttribute('x2',b.x);q.setAttribute('y2',b.y);q.setAttribute('class','viz-link');q.style.animationDelay=i*.05+'s';svg.appendChild(q);if(l.label){const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',(a.x+b.x)/2);t.setAttribute('y',(a.y+b.y)/2-1.5);t.setAttribute('text-anchor','middle');t.setAttribute('class','viz-link-label');t.textContent=clean(l.label);svg.appendChild(t);}});}
   function renderNodes(ns){stage.innerHTML='';ns.forEach((n,i)=>{const e=document.createElement('div');e.className='viz-node';e.style.left=n.x+'%';e.style.top=n.y+'%';e.style.animationDelay=Math.min(i,12)*.055+'s';e.dataset.id=n.id;e.innerHTML=`<div class="node-type">${esc(n.type)}</div><div class="node-label">${esc(n.label)}</div>${n.detail?`<div class="node-detail">${esc(n.detail)}</div>`:''}`;stage.appendChild(e);});}
-  function steps(ss,active){timeline.innerHTML='';ss.slice(0,8).forEach((st,i)=>{const e=document.createElement('div');e.className='viz-step'+(i===active?' active':'');e.innerHTML=`<div class="n">STEP ${String(i+1).padStart(2,'0')}</div><div class="l">${esc(clean(st.label||`Stage ${i+1}`))}</div><div class="d">${esc(clean(st.detail||''))}</div>`;timeline.appendChild(e);});fill.style.width=(ss.length?(active+1)/ss.length*100:100)+'%';}
+  function steps(ss,active){timeline.innerHTML='';ss.forEach((st,i)=>{const e=document.createElement('div');e.className='viz-step'+(i===active?' active':'');e.innerHTML=`<div class="n">STEP ${String(i+1).padStart(2,'0')}</div><div class="l">${esc(clean(st.label||`Stage ${i+1}`))}</div><div class="d">${esc(clean(st.detail||''))}</div>`;timeline.appendChild(e);if(i===active){requestAnimationFrame(()=>e.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}));}});fill.style.width=(ss.length?(active+1)/ss.length*100:100)+'%';}
   function focus(i){const ss=current.steps;if(!ss.length)return;const x=Math.max(0,Math.min(ss.length-1,i));steps(ss,x);const ids=new Set(arr(ss[x]?.focus).map(String));stage.querySelectorAll('.viz-node').forEach((e,j)=>e.classList.toggle('hot',ids.size?ids.has(e.dataset.id):j%ss.length===x));}
   function show(a={}){root.classList.add('active');if(timer)clearInterval(timer);const scene=clean(a.scene||'flow').toLowerCase();current={nodes:layout(nodes(a.nodes),scene),links:arr(a.links),steps:arr(a.steps)};title.textContent=clean(a.title||'Live demonstration');sub.textContent=clean(a.subtitle||scene.toUpperCase()+' // VISUALIZED IN REAL TIME');links(current.nodes,current.links);renderNodes(current.nodes);steps(current.steps,0);if(current.steps.length>1){let i=0;timer=setInterval(()=>{i=(i+1)%current.steps.length;focus(i)},Math.max(1200,Number(a.stepMs)||2200));}else focus(0);return{ok:true,scene,title:a.title||'Live demonstration'};}
   document.getElementById('viz-close').addEventListener('click',close);return{show,close};
@@ -2310,4 +2308,4 @@ async function runUsernameSweep(username, opts={}){
 }
 </script>
 </body>
-  </html>
+                                                                       </html>
