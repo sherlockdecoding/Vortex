@@ -378,6 +378,9 @@ canvas#globe{position:absolute;inset:0;display:block;}
 .viz-node .node-label,.viz-node .node-detail,.viz-node .node-type{transform:none!important;animation:none!important;}
 @media(max-width:600px){
   #viz-shell{left:12px!important;right:12px!important;top:4vh!important;width:calc(100vw - 24px)!important;max-width:calc(100vw - 24px)!important;height:min(680px,92vh)!important;transform:none!important;}
+  /* Keep the explanation card in its own top band; never cover a node. */
+  #viz-action{top:12px!important;left:50%!important;transform:translateX(-50%)!important;width:calc(100% - 34px)!important;max-width:420px!important;z-index:5!important;}
+  #viz-timeline{z-index:6!important;}
   #liveviz.active #viz-shell{transform:none!important;}
   #viz-stage{left:0!important;right:0!important;width:100%!important;max-width:100%!important;}
   .viz-node{transition:opacity .25s ease,box-shadow .25s ease,border-color .25s ease!important;}
@@ -1408,24 +1411,27 @@ const VisualFX=(()=>{
     const hasCustom=ns.some(n=>Number.isFinite(+n.x)||Number.isFinite(+n.y));
 
     if(mobile){
-      const minX=verySmall?24:22, maxX=verySmall?76:78;
-      const minY=12, maxY=57;
+      const minX=verySmall?25:22, maxX=verySmall?75:78;
+      // Reserve the top of the stage for the CURRENT ACTION card and the
+      // bottom for the timeline. Nodes live in the middle band so they can
+      // never sit underneath the explanation card on phones.
+      const minY=34, maxY=68;
 
       if(hasCustom){
         ns.forEach((n)=>{
           n.x=clamp(Number.isFinite(+n.x)?+n.x:50,minX,maxX);
-          n.y=clamp(Number.isFinite(+n.y)?+n.y:28,minY,maxY);
+          n.y=clamp(Number.isFinite(+n.y)?+n.y:50,minY,maxY);
         });
         return ns;
       }
 
-      const cols=(scene==='comparison'||scene==='timeline'||c>2)?2:1;
-      const gapY=verySmall?17:19;
+      const cols=c<=1?1:2;
+      const gapY=verySmall?15:17;
 
       ns.forEach((n,i)=>{
         const row=Math.floor(i/cols),col=i%cols;
         n.x=cols===1?50:(col===0?31:69);
-        n.y=clamp(17+row*gapY,minY,maxY);
+        n.y=clamp(38+row*gapY,minY,maxY);
       });
       return ns;
     }
@@ -2416,4 +2422,4 @@ async function runUsernameSweep(username, opts={}){
 }
 </script>
 </body>
-            </html>
+        </html>
