@@ -118,6 +118,12 @@ canvas#swirl{width:min(78vmin,480px);height:min(78vmin,480px);}
 #settings.visible{transform:translateX(0);}
 #settings h2{font-size:15px;letter-spacing:.06em;margin:0 0 4px;}
 #settings .sub{font-size:11.5px;color:var(--ink-dim);margin:0 0 22px;line-height:1.5;}
+.capabilities{display:flex;flex-direction:column;gap:8px;}
+.capability{display:flex;align-items:center;gap:9px;padding:10px 11px;background:var(--panel-2);
+  border:1px solid var(--line);border-radius:9px;font-size:12px;color:var(--ink);}
+.cap-dot{width:6px;height:6px;flex:0 0 6px;border-radius:50%;background:var(--cyan);
+  box-shadow:0 0 8px rgba(47,232,208,.45);}
+
 #settings label{display:block;font-size:10px;letter-spacing:.1em;color:var(--ink-dim);
   font-family:'JetBrains Mono',monospace;margin-bottom:7px;}
 #keyrow{display:flex;gap:8px;margin-bottom:8px;}
@@ -341,6 +347,25 @@ canvas#globe{position:absolute;inset:0;display:block;}
 .viz-link.active-link{stroke:var(--cyan);stroke-width:3;filter:drop-shadow(0 0 7px rgba(47,232,208,.35))}
 .viz-flow-dot{fill:var(--cyan);filter:drop-shadow(0 0 8px rgba(47,232,208,.8))}
 @media(max-width:520px){#viz-action{width:72vw;padding:10px 12px}.viz-action-t{font-size:12px}.viz-action-d{font-size:8.5px}}
+
+/* EXTRA MOBILE CONTAINMENT */
+@media(max-width:600px){
+  #liveviz{width:100%;height:100%;overflow:hidden!important;touch-action:none;}
+  #viz-shell{
+    left:10px!important;right:10px!important;
+    top:max(10px,env(safe-area-inset-top,0px))!important;
+    width:auto!important;max-width:none!important;
+    height:min(690px,calc(100dvh - 20px))!important;
+    min-height:0!important;overflow:hidden!important;
+  }
+  #viz-stage,#viz-canvas,#viz-svg{overflow:hidden!important;}
+  .viz-node{width:118px!important;max-width:118px!important;}
+}
+@media(max-width:380px){
+  #viz-shell{left:7px!important;right:7px!important;}
+  .viz-node{width:104px!important;max-width:104px!important;}
+}
+
 </style>
 
 <style id="vortex-final-mobile-fix">
@@ -429,14 +454,14 @@ canvas#globe{position:absolute;inset:0;display:block;}
 
   <div class="divider"></div>
 
-  <label>ACTIVE LOOKUP SOURCES</label>
-  <div class="toollist">
-    <div class="toolrow"><span class="name">IP geolocation</span><span class="src mono">ipwho.is</span></div>
-    <div class="toolrow"><span class="name">Domain / WHOIS</span><span class="src mono">rdap.org</span></div>
-    <div class="toolrow"><span class="name">Email breach check</span><span class="src mono">xposedornot</span></div>
-    <div class="toolrow"><span class="name">Username sweep</span><span class="src mono">WhatsMyName API · 700+ · CORS fallback</span></div>
-    <div class="toolrow"><span class="name">Live conversation</span><span class="src mono">Gemini 3.1 Live</span></div>
-<div class="toolrow"><span class="name">Evidence visualization</span><span class="src mono">live charts + scan stream</span></div>
+  <label>CAPABILITIES</label>
+  <div class="capabilities">
+    <div class="capability"><span class="cap-dot"></span><span>Real-time voice conversation</span></div>
+    <div class="capability"><span class="cap-dot"></span><span>Visual explanations and live demonstrations</span></div>
+    <div class="capability"><span class="cap-dot"></span><span>IP and domain research</span></div>
+    <div class="capability"><span class="cap-dot"></span><span>Email exposure checks</span></div>
+    <div class="capability"><span class="cap-dot"></span><span>Username and public-profile research</span></div>
+    <div class="capability"><span class="cap-dot"></span><span>Evidence summaries and visual reports</span></div>
   </div>
 </div>
 
@@ -1375,11 +1400,64 @@ const VisualFX=(()=>{
   function nodes(raw){return arr(raw).slice(0,18).map((n,i)=>({id:String(n.id??`n${i}`),label:clean(n.label||n.name||`Node ${i+1}`),detail:clean(n.detail||n.description||''),type:clean(n.type||'CONCEPT').toUpperCase(),x:clamp(n.x,8,92)||8+((i%5)*18),y:clamp(n.y,8,68)||16+Math.floor(i/5)*17}));}
   function layout(ns,scene){
     const c=ns.length||1,mobile=innerWidth<=600,verySmall=innerWidth<=380;
+    /*
+      Mobile-safe layout: node centers stay well inside the stage. This avoids
+      the old edge positions (17%/83%) placing a ~120px node partly outside
+      narrow phone screens.
+    */
     const hasCustom=ns.some(n=>Number.isFinite(+n.x)||Number.isFinite(+n.y));
-    if(hasCustom){const minX=mobile?(verySmall?20:17):8,maxX=mobile?(verySmall?80:83):92,minY=mobile?10:8,maxY=mobile?60:68;ns.forEach(n=>{n.x=clamp(n.x||50,minX,maxX);n.y=clamp(n.y||35,minY,maxY)});return ns;}
-    if(scene==='timeline'){const cols=mobile?Math.min(c,3):Math.min(c,6);ns.forEach((n,i)=>{const row=Math.floor(i/cols),col=i%cols;n.x=cols===1?50:14+(col/Math.max(1,cols-1))*72;n.y=20+row*(mobile?18:22)});}
-    else if(scene==='comparison'){ns.forEach((n,i)=>{n.x=i%2?70:30;n.y=20+Math.floor(i/2)*(mobile?18:22)});}
-    else {const r=mobile?(verySmall?22:27):(c>8?31:27),cy=mobile?32:34;ns.forEach((n,i)=>{const a=i/c*Math.PI*2-Math.PI/2;n.x=50+Math.cos(a)*r;n.y=cy+Math.sin(a)*r*(mobile?.58:.62)});}
+
+    if(mobile){
+      const minX=verySmall?24:22, maxX=verySmall?76:78;
+      const minY=12, maxY=57;
+
+      if(hasCustom){
+        ns.forEach((n)=>{
+          n.x=clamp(Number.isFinite(+n.x)?+n.x:50,minX,maxX);
+          n.y=clamp(Number.isFinite(+n.y)?+n.y:28,minY,maxY);
+        });
+        return ns;
+      }
+
+      const cols=(scene==='comparison'||scene==='timeline'||c>2)?2:1;
+      const gapY=verySmall?17:19;
+
+      ns.forEach((n,i)=>{
+        const row=Math.floor(i/cols),col=i%cols;
+        n.x=cols===1?50:(col===0?31:69);
+        n.y=clamp(17+row*gapY,minY,maxY);
+      });
+      return ns;
+    }
+
+    if(hasCustom){
+      ns.forEach(n=>{
+        n.x=clamp(Number.isFinite(+n.x)?+n.x:50,8,92);
+        n.y=clamp(Number.isFinite(+n.y)?+n.y:35,8,68);
+      });
+      return ns;
+    }
+
+    if(scene==='timeline'){
+      const cols=Math.min(c,6);
+      ns.forEach((n,i)=>{
+        const row=Math.floor(i/cols),col=i%cols;
+        n.x=cols===1?50:14+(col/Math.max(1,cols-1))*72;
+        n.y=20+row*22;
+      });
+    }else if(scene==='comparison'){
+      ns.forEach((n,i)=>{
+        n.x=i%2?70:30;
+        n.y=20+Math.floor(i/2)*22;
+      });
+    }else{
+      const r=c>8?31:27,cy=34;
+      ns.forEach((n,i)=>{
+        const a=i/c*Math.PI*2-Math.PI/2;
+        n.x=50+Math.cos(a)*r;
+        n.y=cy+Math.sin(a)*r*.62;
+      });
+    }
     return ns;
   }
   function links(ns,ls){svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('preserveAspectRatio','none');svg.innerHTML='';const m=new Map(ns.map(n=>[n.id,n]));arr(ls).slice(0,40).forEach((l,i)=>{const a=m.get(String(l.source)),b=m.get(String(l.target));if(!a||!b)return;const q=document.createElementNS('http://www.w3.org/2000/svg','line');q.setAttribute('x1',a.x);q.setAttribute('y1',a.y);q.setAttribute('x2',b.x);q.setAttribute('y2',b.y);q.setAttribute('class','viz-link');q.dataset.source=a.id;q.dataset.target=b.id;q.dataset.index=i;svg.appendChild(q);if(l.label){const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',(a.x+b.x)/2);t.setAttribute('y',(a.y+b.y)/2-1.5);t.setAttribute('text-anchor','middle');t.setAttribute('class','viz-link-label');t.textContent=clean(l.label);svg.appendChild(t);}});}
@@ -2338,4 +2416,4 @@ async function runUsernameSweep(username, opts={}){
 }
 </script>
 </body>
-  </html>
+            </html>
